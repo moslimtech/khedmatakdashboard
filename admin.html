@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مكانك | لوحة التحكم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+        body { font-family: 'Cairo', system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+        .spinner { border-top-color: #6366f1; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="loginForm" class="flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-slate-200">
+            <h2 class="text-2xl font-bold text-center mb-6">تسجيل الدخول</h2>
+            <form id="login" class="space-y-4">
+                <div>
+                    <label for="placeIdInput" class="block text-sm font-semibold mb-1">ID المكان</label>
+                    <input type="number" id="placeIdInput" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label for="passwordInput" class="block text-sm font-semibold mb-1">كلمة المرور</label>
+                    <input type="password" id="passwordInput" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-2xl hover:bg-indigo-700 transition">تسجيل الدخول</button>
+                <p id="loginMessage" class="text-center text-sm text-red-500 mt-2"></p>
+                <button type="button" onclick="showRegistrationForm()" class="w-full text-sm text-indigo-600 hover:text-indigo-800 transition">تسجيل مكان جديد</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="registrationForm" class="hidden flex items-center justify-center min-h-screen p-4">
+        <div class="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-xl border border-slate-200">
+            <h2 class="text-2xl font-bold text-center mb-6">تسجيل مكان جديد</h2>
+            <form id="register" class="space-y-4">
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="regPlaceName" class="block text-sm font-semibold mb-1">اسم المكان</label>
+                        <input type="text" id="regPlaceName" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="regActivity" class="block text-sm font-semibold mb-1">نوع النشاط / الفئة</label>
+                        <input type="text" id="regActivity" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="regCity" class="block text-sm font-semibold mb-1">المدينة</label>
+                        <input type="text" id="regCity" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div>
+                        <label for="regArea" class="block text-sm font-semibold mb-1">المنطقة</label>
+                        <input type="text" id="regArea" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                </div>
+                <div>
+                    <label for="regContactPhone" class="block text-sm font-semibold mb-1">رقم التواصل</label>
+                    <input type="tel" id="regContactPhone" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <div>
+                    <label for="regPassword" class="block text-sm font-semibold mb-1">كلمة المرور</label>
+                    <input type="password" id="regPassword" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-2xl hover:bg-indigo-700 transition">تسجيل</button>
+                <p id="registerMessage" class="text-center text-sm text-red-500 mt-2"></p>
+                <button type="button" onclick="showLoginForm()" class="w-full text-sm text-indigo-600 hover:text-indigo-800 transition">العودة لتسجيل الدخول</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden max-w-4xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6">لوحة التحكم</h1>
+        
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+            <h3 class="text-xl font-bold mb-4">بيانات مكانك</h3>
+            <div id="placeDetails" class="space-y-2 text-sm text-slate-600">
+                <p><strong>اسم المكان:</strong> <span id="placeName"></span></p>
+                <p><strong>المدينة:</strong> <span id="placeCity"></span></p>
+                <p><strong>الباقة الحالية:</strong> <span id="currentPackage"></span></p>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h3 class="text-xl font-bold mb-4">تحديث بيانات المكان</h3>
+            <form id="updateForm" class="space-y-4">
+                <div>
+                    <label for="statusSelect" class="block text-sm font-semibold mb-1">حالة المكان</label>
+                    <select id="statusSelect" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500">
+                        <option value="مفتوح">مفتوح</option>
+                        <option value="مغلق">مغلق</option>
+                        <option value="مغلق للصلاة">مغلق للصلاة</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="packageSelect" class="block text-sm font-semibold mb-1">اختيار الباقة</label>
+                    <select id="packageSelect" class="w-full rounded-2xl border-slate-300 focus:ring-2 focus:ring-indigo-500"></select>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-2xl hover:bg-emerald-700 transition">تحديث</button>
+                <p id="updateMessage" class="text-center text-sm text-green-500 mt-2"></p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // قم بتغيير هذا الرابط إلى رابط تطبيق Google Apps Script الخاص بك
+        const API_BASE = "https://script.google.com/macros/s/YOUR_DEPLOYED_APP_SCRIPT_ID/exec";
+        
+        const loginForm = document.getElementById('loginForm');
+        const dashboard = document.getElementById('dashboard');
+        const loginMessage = document.getElementById('loginMessage');
+        const updateMessage = document.getElementById('updateMessage');
+        const placeIdInput = document.getElementById('placeIdInput');
+        const passwordInput = document.getElementById('passwordInput');
+        
+        const placeDetails = document.getElementById('placeDetails');
+        const placeName = document.getElementById('placeName');
+        const placeCity = document.getElementById('placeCity');
+        const currentPackage = document.getElementById('currentPackage');
+        const statusSelect = document.getElementById('statusSelect');
+        const packageSelect = document.getElementById('packageSelect');
+
+        let loggedInPlaceId = null;
+
+        function showRegistrationForm() {
+            loginForm.classList.add('hidden');
+            document.getElementById('registrationForm').classList.remove('hidden');
+        }
+
+        function showLoginForm() {
+            loginForm.classList.remove('hidden');
+            document.getElementById('registrationForm').classList.add('hidden');
+        }
+
+        document.getElementById('login').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const placeId = placeIdInput.value;
+            const password = passwordInput.value;
+            loginMessage.textContent = 'جاري التحقق...';
+
+            const res = await fetch(`${API_BASE}?action=login&id=${placeId}&password=${password}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                loggedInPlaceId = placeId;
+                loginForm.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+                displayPlaceData(data.place);
+                loadPackages(data.packages);
+                loginMessage.textContent = '';
+            } else {
+                loginMessage.textContent = data.message || 'ID أو كلمة مرور خاطئة.';
+            }
+        });
+        
+        document.getElementById('updateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!loggedInPlaceId) return;
+            updateMessage.textContent = 'جاري التحديث...';
+
+            const newStatus = statusSelect.value;
+            const newPackage = packageSelect.value;
+            
+            const res = await fetch(`${API_BASE}?action=updatePlace&id=${loggedInPlaceId}&status=${newStatus}&package=${newPackage}`);
+            const data = await res.json();
+            
+            if (data.success) {
+                updateMessage.textContent = 'تم التحديث بنجاح!';
+                updateMessage.classList.add('text-green-500');
+                updateMessage.classList.remove('text-red-500');
+            } else {
+                updateMessage.textContent = data.message || 'حدث خطأ في التحديث.';
+                updateMessage.classList.add('text-red-500');
+                updateMessage.classList.remove('text-green-500');
+            }
+        });
+        
+        document.getElementById('register').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const registerMessage = document.getElementById('registerMessage');
+            registerMessage.textContent = 'جاري التسجيل...';
+            
+            const formData = {
+                name: document.getElementById('regPlaceName').value,
+                activity: document.getElementById('regActivity').value,
+                city: document.getElementById('regCity').value,
+                area: document.getElementById('regArea').value,
+                phone: document.getElementById('regContactPhone').value,
+                password: document.getElementById('regPassword').value
+            };
+
+            const res = await fetch(`${API_BASE}?action=register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                registerMessage.textContent = `تم التسجيل بنجاح! ID المكان: ${data.placeId}. استخدمه لتسجيل الدخول.`;
+                registerMessage.classList.add('text-green-500');
+                registerMessage.classList.remove('text-red-500');
+                document.getElementById('register').reset();
+            } else {
+                registerMessage.textContent = data.message || 'حدث خطأ في التسجيل.';
+                registerMessage.classList.add('text-red-500');
+                registerMessage.classList.remove('text-green-500');
+            }
+        });
+
+        function displayPlaceData(place) {
+            placeName.textContent = place['اسم المكان'];
+            placeCity.textContent = place['المدينة'] + ' - ' + place['المنطقة'];
+            currentPackage.textContent = place['الباقة'];
+            statusSelect.value = place['حالة التسجيل'] || 'مفتوح';
+        }
+
+        function loadPackages(packages) {
+            packageSelect.innerHTML = '';
+            packages.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p['ID الباقة'];
+                option.textContent = p['اسم الباقة'] + ' (' + p['مدة الباقة باليوم'] + ' يوم)';
+                packageSelect.appendChild(option);
+            });
+        }
+    </script>
+</body>
+</html>
