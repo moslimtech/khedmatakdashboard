@@ -1,5 +1,5 @@
 // متغيرات التطبيق
-const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL'; // استبدل هذا برابط النص البرمجي الخاص بك
+const API_URL = 'https://script.google.com/macros/s/AKfycbx-fMI2hsJ5LvKKh9fzd3Vidn2TeGtEbHV9Nyj2nZBy9xQk9Uy_uL-m3hrDqp1uUWAPwA/exec'; // استبدل هذا برابط النص البرمجي الخاص بك
 let metaData = {};
 
 // عند تحميل الصفحة
