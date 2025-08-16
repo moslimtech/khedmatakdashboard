@@ -101,128 +101,147 @@
         </div>
     </div>
 
-    <script>
-        // قم بتغيير هذا الرابط إلى رابط تطبيق Google Apps Script الخاص بك
-        const API_BASE = "https://script.google.com/macros/s/AKfycbwt0KAG3gReMxD2vPCLgKcEofc5dh4gwfIBgj3bSRjI5D0D1cOCmgNVI6vdF4B6Rwdvkw/exec";
-        
-        const loginForm = document.getElementById('loginForm');
-        const dashboard = document.getElementById('dashboard');
-        const loginMessage = document.getElementById('loginMessage');
-        const updateMessage = document.getElementById('updateMessage');
-        const placeIdInput = document.getElementById('placeIdInput');
-        const passwordInput = document.getElementById('passwordInput');
-        
-        const placeDetails = document.getElementById('placeDetails');
-        const placeName = document.getElementById('placeName');
-        const placeCity = document.getElementById('placeCity');
-        const currentPackage = document.getElementById('currentPackage');
-        const statusSelect = document.getElementById('statusSelect');
-        const packageSelect = document.getElementById('packageSelect');
+   <script>
+    const API_BASE = "https://script.google.com/macros/s/AKfycbwt0KAG3gReMxD2vPCLgKcEofc5dh4gwfIBgj3bSRjI5D0D1cOCmgNVI6vdF4B6Rwdvkw/exec";
 
-        let loggedInPlaceId = null;
+    const loginForm = document.getElementById('loginForm');
+    const dashboard = document.getElementById('dashboard');
+    const loginMessage = document.getElementById('loginMessage');
+    const updateMessage = document.getElementById('updateMessage');
+    const placeIdInput = document.getElementById('placeIdInput');
+    const passwordInput = document.getElementById('passwordInput');
 
-        function showRegistrationForm() {
+    const placeName = document.getElementById('placeName');
+    const placeCity = document.getElementById('placeCity');
+    const currentPackage = document.getElementById('currentPackage');
+    const statusSelect = document.getElementById('statusSelect');
+    const packageSelect = document.getElementById('packageSelect');
+
+    let loggedInPlaceId = null;
+
+    function showRegistrationForm() {
+        loginForm.classList.add('hidden');
+        document.getElementById('registrationForm').classList.remove('hidden');
+    }
+
+    function showLoginForm() {
+        loginForm.classList.remove('hidden');
+        document.getElementById('registrationForm').classList.add('hidden');
+    }
+
+    // 🔹 تسجيل الدخول
+    document.getElementById('login').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const placeId = placeIdInput.value;
+        const password = passwordInput.value;
+        loginMessage.textContent = 'جاري التحقق...';
+        loginMessage.classList.remove('text-red-500');
+
+        const res = await fetch(`${API_BASE}?action=login&id=${placeId}&password=${password}`);
+        const data = await res.json();
+
+        if (data.success) {
+            loggedInPlaceId = placeId;
             loginForm.classList.add('hidden');
-            document.getElementById('registrationForm').classList.remove('hidden');
+            dashboard.classList.remove('hidden');
+            displayPlaceData(data.place);
+            loadPackages(data.packages);
+            loginMessage.textContent = '';
+        } else {
+            loginMessage.textContent = data.message || 'ID أو كلمة مرور خاطئة.';
+            loginMessage.classList.add('text-red-500');
         }
+    });
 
-        function showLoginForm() {
-            loginForm.classList.remove('hidden');
-            document.getElementById('registrationForm').classList.add('hidden');
-        }
+    // 🔹 تحديث البيانات
+    document.getElementById('updateForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!loggedInPlaceId) return;
+        updateMessage.textContent = 'جاري التحديث...';
+        updateMessage.classList.remove('text-red-500', 'text-green-500');
 
-        document.getElementById('login').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const placeId = placeIdInput.value;
-            const password = passwordInput.value;
-            loginMessage.textContent = 'جاري التحقق...';
+        const newStatus = statusSelect.value;
+        const newPackage = packageSelect.value;
 
-            const res = await fetch(`${API_BASE}?action=login&id=${placeId}&password=${password}`);
-            const data = await res.json();
-            
-            if (data.success) {
-                loggedInPlaceId = placeId;
-                loginForm.classList.add('hidden');
-                dashboard.classList.remove('hidden');
-                displayPlaceData(data.place);
-                loadPackages(data.packages);
-                loginMessage.textContent = '';
-            } else {
-                loginMessage.textContent = data.message || 'ID أو كلمة مرور خاطئة.';
-            }
+        const res = await fetch(API_BASE, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "updatePlace",
+                id: loggedInPlaceId,
+                status: newStatus,
+                package: newPackage
+            })
         });
-        
-        document.getElementById('updateForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!loggedInPlaceId) return;
-            updateMessage.textContent = 'جاري التحديث...';
+        const data = await res.json();
 
-            const newStatus = statusSelect.value;
-            const newPackage = packageSelect.value;
-            
-            const res = await fetch(`${API_BASE}?action=updatePlace&id=${loggedInPlaceId}&status=${newStatus}&package=${newPackage}`);
-            const data = await res.json();
-            
-            if (data.success) {
-                updateMessage.textContent = 'تم التحديث بنجاح!';
-                updateMessage.classList.add('text-green-500');
-                updateMessage.classList.remove('text-red-500');
-            } else {
-                updateMessage.textContent = data.message || 'حدث خطأ في التحديث.';
-                updateMessage.classList.add('text-red-500');
-                updateMessage.classList.remove('text-green-500');
-            }
-        });
-        
-        document.getElementById('register').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const registerMessage = document.getElementById('registerMessage');
-            registerMessage.textContent = 'جاري التسجيل...';
-            
-            const formData = {
-                name: document.getElementById('regPlaceName').value,
-                activity: document.getElementById('regActivity').value,
-                city: document.getElementById('regCity').value,
-                area: document.getElementById('regArea').value,
-                phone: document.getElementById('regContactPhone').value,
-                password: document.getElementById('regPassword').value
-            };
-
-            const res = await fetch(`${API_BASE}?action=register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            const data = await res.json();
-            
-            if (data.success) {
-                registerMessage.textContent = `تم التسجيل بنجاح! ID المكان: ${data.placeId}. استخدمه لتسجيل الدخول.`;
-                registerMessage.classList.add('text-green-500');
-                registerMessage.classList.remove('text-red-500');
-                document.getElementById('register').reset();
-            } else {
-                registerMessage.textContent = data.message || 'حدث خطأ في التسجيل.';
-                registerMessage.classList.add('text-red-500');
-                registerMessage.classList.remove('text-green-500');
-            }
-        });
-
-        function displayPlaceData(place) {
-            placeName.textContent = place['اسم المكان'];
-            placeCity.textContent = place['المدينة'] + ' - ' + place['المنطقة'];
-            currentPackage.textContent = place['الباقة'];
-            statusSelect.value = place['حالة التسجيل'] || 'مفتوح';
+        if (data.success) {
+            updateMessage.textContent = 'تم التحديث بنجاح!';
+            updateMessage.classList.add('text-green-500');
+        } else {
+            updateMessage.textContent = data.message || 'حدث خطأ في التحديث.';
+            updateMessage.classList.add('text-red-500');
         }
+    });
 
-        function loadPackages(packages) {
-            packageSelect.innerHTML = '';
-            packages.forEach(p => {
-                const option = document.createElement('option');
-                option.value = p['ID الباقة'];
-                option.textContent = p['اسم الباقة'] + ' (' + p['مدة الباقة باليوم'] + ' يوم)';
-                packageSelect.appendChild(option);
-            });
+    // 🔹 تسجيل مكان جديد
+    document.getElementById('register').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const registerMessage = document.getElementById('registerMessage');
+        registerMessage.textContent = 'جاري التسجيل...';
+        registerMessage.classList.remove('text-red-500', 'text-green-500');
+
+        const formData = {
+            action: "register",
+            name: document.getElementById('regPlaceName').value,
+            activity: document.getElementById('regActivity').value,
+            city: document.getElementById('regCity').value,
+            area: document.getElementById('regArea').value,
+            phone: document.getElementById('regContactPhone').value,
+            password: document.getElementById('regPassword').value
+        };
+
+        const res = await fetch(API_BASE, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            registerMessage.textContent = `✅ تم التسجيل بنجاح! ID المكان: ${data.placeId}. استخدمه لتسجيل الدخول.`;
+            registerMessage.classList.add('text-green-500');
+            document.getElementById('register').reset();
+
+            // بعد 3 ثواني يرجعك لشاشة تسجيل الدخول
+            setTimeout(() => {
+                showLoginForm();
+                registerMessage.textContent = '';
+            }, 3000);
+        } else {
+            registerMessage.textContent = data.message || 'حدث خطأ في التسجيل.';
+            registerMessage.classList.add('text-red-500');
         }
-    </script>
+    });
+
+    // عرض بيانات المكان
+    function displayPlaceData(place) {
+        placeName.textContent = place['اسم المكان'];
+        placeCity.textContent = place['المدينة'] + ' - ' + place['المنطقة'];
+        currentPackage.textContent = place['الباقة'];
+        statusSelect.value = place['حالة التسجيل'] || 'مفتوح';
+    }
+
+    // تحميل الباقات
+    function loadPackages(packages) {
+        packageSelect.innerHTML = '';
+        packages.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p['ID الباقة'];
+            option.textContent = `${p['اسم الباقة']} (${p['مدة الباقة باليوم']} يوم)`;
+            packageSelect.appendChild(option);
+        });
+    }
+</script>
 </body>
 </html>
