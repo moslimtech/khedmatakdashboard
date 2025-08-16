@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل مكان جديد - مكانك</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Tahoma', Arial, sans-serif;
+        }
+        .registration-card {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: white;
+        }
+        .form-header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        .logo {
+            max-width: 150px;
+            margin-bottom: 20px;
+        }
+        .required-field::after {
+            content: " *";
+            color: red;
+        }
+        .image-preview {
+            max-width: 150px;
+            max-height: 150px;
+            margin-top: 10px;
+            display: none;
+        }
+        .section-title {
+            background-color: #f1f1f1;
+            padding: 8px 15px;
+            margin: 20px 0 15px;
+            border-right: 4px solid #3498db;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="registration-card">
+            <div class="form-header">
+                <img src="https://via.placeholder.com/150x50?text=مكانك" alt="شعار مكانك" class="logo">
+                <h2>تسجيل مكان جديد</h2>
+                <p class="text-muted">املأ النموذج التالي لتسجيل مكانك في دليل "مكانك"</p>
+            </div>
+
+            <form id="registrationForm" enctype="multipart/form-data">
+                <!-- القسم الأول: المعلومات الأساسية -->
+                <div class="section-title">المعلومات الأساسية</div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="name" class="form-label required-field">اسم المكان</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="activity" class="form-label required-field">نوع النشاط</label>
+                        <select class="form-select" id="activity" name="activity" required>
+                            <option value="" selected disabled>اختر نوع النشاط</option>
+                            <option value="مطعم">مطعم</option>
+                            <option value="كافيه">كافيه</option>
+                            <option value="سوبر ماركت">سوبر ماركت</option>
+                            <option value="صالون تجميل">صالون تجميل</option>
+                            <option value="مركز رياضي">مركز رياضي</option>
+                            <option value="متجر ملابس">متجر ملابس</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="city" class="form-label required-field">المدينة</label>
+                        <select class="form-select" id="city" name="city" required>
+                            <option value="" selected disabled>اختر المدينة</option>
+                            <option value="القاهرة">القاهرة</option>
+                            <option value="الجيزة">الجيزة</option>
+                            <option value="الإسكندرية">الإسكندرية</option>
+                            <option value="السادات">السادات</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="area" class="form-label required-field">المنطقة</label>
+                        <input type="text" class="form-control" id="area" name="area" required>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="mall" class="form-label">الموقع أو المول</label>
+                        <input type="text" class="form-control" id="mall" name="mall">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="address" class="form-label required-field">العنوان التفصيلي</label>
+                        <input type="text" class="form-control" id="address" name="address" required>
+                    </div>
+                </div>
+
+                <!-- القسم الثاني: معلومات الاتصال -->
+                <div class="section-title">معلومات الاتصال</div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="phone" class="form-label required-field">رقم الهاتف</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="email" class="form-label">البريد الإلكتروني</label>
+                        <input type="email" class="form-control" id="email" name="email">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="website" class="form-label">الموقع الإلكتروني</label>
+                        <input type="url" class="form-control" id="website" name="website">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="mapLink" class="form-label">رابط الموقع على الخريطة</label>
+                        <input type="url" class="form-control" id="mapLink" name="mapLink" placeholder="https://maps.google.com/...">
+                    </div>
+                </div>
+
+                <!-- القسم الثالث: معلومات إضافية -->
+                <div class="section-title">معلومات إضافية</div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="hours" class="form-label">ساعات العمل</label>
+                        <input type="text" class="form-control" id="hours" name="hours" placeholder="مثال: 9 صباحاً - 12 مساءً">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="delivery" class="form-label">خدمات التوصيل</label>
+                        <select class="form-select" id="delivery" name="delivery">
+                            <option value="نعم">نعم</option>
+                            <option value="لا" selected>لا</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label for="description" class="form-label">وصف مختصر</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <!-- القسم الرابع: الشعار والباقة -->
+                <div class="section-title">الشعار والباقة</div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="logo" class="form-label">شعار المكان</label>
+                        <input type="file" class="form-control" id="logo" name="logo" accept="image/*">
+                        <img id="logoPreview" class="image-preview" alt="معاينة الشعار">
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="package" class="form-label required-field">الباقة</label>
+                        <select class="form-select" id="package" name="package" required>
+                            <option value="" selected disabled>اختر الباقة</option>
+                            <option value="P001">الباقة الفضية (30 يوم)</option>
+                            <option value="P002">الباقة الذهبية (90 يوم)</option>
+                            <option value="P003">الباقة البلاتينية (180 يوم)</option>
+                            <option value="P004">الباقة الماسية (365 يوم)</option>
+                            <option value="P005">الباقة التجريبية (7 أيام)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- القسم الخامس: كلمة المرور -->
+                <div class="section-title">كلمة المرور</div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="password" class="form-label required-field">كلمة المرور</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="confirmPassword" class="form-label required-field">تأكيد كلمة المرور</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                    </div>
+                </div>
+
+                <!-- الشروط والأحكام -->
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+                    <label class="form-check-label" for="terms">
+                        أوافق على <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">الشروط والأحكام</a>
+                    </label>
+                </div>
+
+                <!-- زر التسجيل -->
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">تسجيل المكان</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نموذج الشروط والأحكام -->
+    <div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="termsModalLabel">الشروط والأحكام</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>1. شروط التسجيل</h6>
+                    <p>يجب أن تكون جميع المعلومات المقدمة صحيحة ودقيقة. يحق لإدارة "مكانك" التحقق من صحة المعلومات ورفض أي طلب تسجيل دون إبداء الأسباب.</p>
+                    
+                    <h6>2. مسؤولية المحتوى</h6>
+                    <p>أنت المسؤول الوحيد عن المحتوى الذي تقدمه عبر المنصة. يجب أن يكون المحتوى مناسباً ولا ينتهك أي حقوق ملكية فكرية أو قوانين محلية.</p>
+                    
+                    <h6>3. سياسة الخصوصية</h6>
+                    <p>نحن نحترم خصوصيتك. لن يتم مشاركة معلوماتك الشخصية مع أطراف ثالثة دون موافقتك، إلا إذا تطلبت ذلك القوانين المعمول بها.</p>
+                    
+                    <h6>4. سياسة الإلغاء والاسترداد</h6>
+                    <p>يمكنك إلغاء اشتراكك في أي وقت، ولكن لن يتم استرداد المبالغ المدفوعة لأي باقة تم الاشتراك بها.</p>
+                    
+                    <h6>5. التعديلات على الشروط</h6>
+                    <p>تحتفظ إدارة "مكانك" بحق تعديل هذه الشروط في أي وقت، وسيتم إعلامك بأي تغييرات جوهرية.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">أغلق</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // معاينة صورة الشعار قبل الرفع
+        document.getElementById('logo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const preview = document.getElementById('logoPreview');
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // التحقق من تطابق كلمة المرور
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                e.preventDefault();
+                alert('كلمة المرور وتأكيدها غير متطابقين');
+                return false;
+            }
+            
+            // هنا يمكنك إضافة كود إرسال البيانات إلى الخادم
+            // e.preventDefault();
+            // submitForm();
+        });
+
+        // دالة لإرسال النموذج (ستحتاج إلى تعديلها حسب احتياجاتك)
+        function submitForm() {
+            const form = document.getElementById('registrationForm');
+            const formData = new FormData(form);
+            
+            // إضافة صورة الشعار إذا تم تحميلها
+            const logoInput = document.getElementById('logo');
+            if (logoInput.files.length > 0) {
+                const file = logoInput.files[0];
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const base64 = event.target.result.split(',')[1];
+                    formData.append('logoBase64', base64);
+                    sendDataToServer(formData);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                sendDataToServer(formData);
+            }
+        }
+
+        function sendDataToServer(formData) {
+            // هنا يمكنك استخدام fetch أو axios لإرسال البيانات إلى الخادم
+            fetch('https://script.google.com/macros/s/AKfycbx-fMI2hsJ5LvKKh9fzd3Vidn2TeGtEbHV9Nyj2nZBy9xQk9Uy_uL-m3hrDqp1uUWAPwA/exec', {
+                method: 'POST',
+                body: JSON.stringify(Object.fromEntries(formData)),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('تم تسجيل المكان بنجاح! رقم المكان: ' + data.placeId);
+                    form.reset();
+                } else {
+                    alert('حدث خطأ: ' + (data.message || 'يرجى المحاولة لاحقاً'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('حدث خطأ أثناء الاتصال بالخادم');
+            });
+        }
+    </script>
+</body>
+</html>
