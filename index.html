@@ -1,46 +1,130 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <title>إضافة مكان / خدمة</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: "Cairo", sans-serif; background: #f7f7f7; padding: 20px; }
-    form { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
-    input, textarea, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; }
-    button { background: #2196f3; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-    button:hover { background: #1976d2; }
-    h2 { text-align: center; color: #333; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل محل جديد</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
+    <div class="container py-5">
+        <h1 class="text-center mb-4">تسجيل محل جديد</h1>
+        
+        <form id="storeForm">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="name" class="form-label">اسم المحل *</label>
+                    <input type="text" class="form-control" id="name" name="name" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="category" class="form-label">نوع النشاط *</label>
+                    <select class="form-select" id="category" name="category" required>
+                        <option value="">اختر الفئة</option>
+                        <option value="مطاعم">مطاعم</option>
+                        <option value="كافيهات">كافيهات</option>
+                        <option value="محلات ملابس">محلات ملابس</option>
+                        <option value="محلات إلكترونيات">محلات إلكترونيات</option>
+                        <option value="صيدليات">صيدليات</option>
+                        <option value="محلات تجميل">محلات تجميل</option>
+                        <option value="خدمات">خدمات</option>
+                        <option value="أخرى">أخرى</option>
+                    </select>
+                </div>
+            </div>
 
-  <h2>إضافة مكان / خدمة جديدة</h2>
-  <form id="placeForm">
-    <label>اسم المكان / الخدمة</label>
-    <input type="text" id="name" required>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="city" class="form-label">المدينة *</label>
+                    <input type="text" class="form-control" id="city" name="city" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="area" class="form-label">المنطقة *</label>
+                    <input type="text" class="form-control" id="area" name="area" required>
+                </div>
+            </div>
 
-    <label>الموقع</label>
-    <input type="text" id="location" required>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="mall" class="form-label">الموقع / المول</label>
+                    <input type="text" class="form-control" id="mall" name="mall">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="address" class="form-label">العنوان التفصيلي</label>
+                    <input type="text" class="form-control" id="address" name="address">
+                </div>
+            </div>
 
-    <label>تفاصيل</label>
-    <textarea id="details"></textarea>
+            <div class="mb-3">
+                <label for="maplink" class="form-label">رابط الموقع على الخريطة</label>
+                <input type="url" class="form-control" id="maplink" name="maplink">
+            </div>
 
-    <label>رقم الهاتف</label>
-    <input type="text" id="phone">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="phone" class="form-label">رقم الهاتف *</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="whatsapp" class="form-label">رابط واتساب</label>
+                    <input type="url" class="form-control" id="whatsapp" name="whatsapp">
+                </div>
+            </div>
 
-    <label>أيام العمل</label>
-    <input type="text" id="workdays" placeholder="مثال: السبت - الخميس">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="facebook" class="form-label">رابط فيسبوك</label>
+                    <input type="url" class="form-control" id="facebook" name="facebook">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="instagram" class="form-label">رابط انستجرام</label>
+                    <input type="url" class="form-control" id="instagram" name="instagram">
+                </div>
+            </div>
 
-    <label>من الساعة</label>
-    <input type="time" id="from_hour">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="tiktok" class="form-label">رابط تيك توك</label>
+                    <input type="url" class="form-control" id="tiktok" name="tiktok">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="snap" class="form-label">رابط سناب شات</label>
+                    <input type="url" class="form-control" id="snap" name="snap">
+                </div>
+            </div>
 
-    <label>إلى الساعة</label>
-    <input type="time" id="to_hour">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="logo" class="form-label">رابط شعار المحل</label>
+                    <input type="url" class="form-control" id="logo" name="logo">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="password" class="form-label">كلمة المرور</label>
+                    <input type="password" class="form-control" id="password" name="password">
+                </div>
+            </div>
 
-    <button type="submit">إضافة</button>
-  </form>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="total_visits" class="form-label">عدد الزيارات الكلية</label>
+                    <input type="number" class="form-control" id="total_visits" name="total_visits" value="0">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="daily_visits" class="form-label">عدد الزيارات اليومية</label>
+                    <input type="number" class="form-control" id="daily_visits" name="daily_visits" value="0">
+                </div>
+            </div>
 
-  <script src="newscript.js"></script>
+            <div class="mb-3">
+                <label for="description" class="form-label">وصف مختصر</label>
+                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+            </div>
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary btn-lg">تسجيل المحل</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="newscript.js"></script>
 </body>
 </html>
