@@ -3,128 +3,608 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل محل جديد</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>لوحة تحكم الأماكن والإعلانات</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .tab:hover:not(.active) {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+        }
+
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-upload label {
+            display: block;
+            padding: 15px;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload label:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #764ba2;
+        }
+
+        .preview-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .preview-image {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .preview-image img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="container py-5">
-        <h1 class="text-center mb-4">تسجيل محل جديد</h1>
-        
-        <form id="storeForm">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="name" class="form-label">اسم المحل *</label>
-                    <input type="text" class="form-control" id="name" name="name" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="category" class="form-label">نوع النشاط *</label>
-                    <select class="form-select" id="category" name="category" required>
-                        <option value="">اختر الفئة</option>
-                        <option value="مطاعم">مطاعم</option>
-                        <option value="كافيهات">كافيهات</option>
-                        <option value="محلات ملابس">محلات ملابس</option>
-                        <option value="محلات إلكترونيات">محلات إلكترونيات</option>
-                        <option value="صيدليات">صيدليات</option>
-                        <option value="محلات تجميل">محلات تجميل</option>
-                        <option value="خدمات">خدمات</option>
-                        <option value="أخرى">أخرى</option>
-                    </select>
-                </div>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-store"></i> لوحة تحكم الأماكن والإعلانات</h1>
+            <p>إدارة الأماكن والإعلانات بسهولة</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('places')">
+                <i class="fas fa-map-marker-alt"></i> إدارة الأماكن
+            </div>
+            <div class="tab" onclick="showTab('ads')">
+                <i class="fas fa-ad"></i> إدارة الإعلانات
+            </div>
+            <div class="tab" onclick="showTab('packages')">
+                <i class="fas fa-gift"></i> الباقات
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- إدارة الأماكن -->
+            <div id="places-tab" class="tab-content">
+                <h2><i class="fas fa-plus-circle"></i> إضافة مكان جديد</h2>
+                <form id="placeForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>اسم المكان</label>
+                            <input type="text" class="form-control" name="placeName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>نوع النشاط</label>
+                            <select class="form-control" name="activityType" required>
+                                <option value="">اختر نوع النشاط</option>
+                                <option value="1">سوبر ماركت</option>
+                                <option value="2">مطعم</option>
+                                <option value="3">مقهى</option>
+                                <option value="4">صالون تجميل</option>
+                                <option value="5">مركز رياضي</option>
+                                <option value="6">متجر ملابس</option>
+                                <option value="7">مكتبة</option>
+                                <option value="8">مكتبة إلكترونية</option>
+                                <option value="9">محل حلويات</option>
+                                <option value="10">محل إلكترونيات</option>
+                                <option value="11">محل أدوات منزلية</option>
+                                <option value="12">صيدلية</option>
+                                <option value="13">محل ألبسة رياضية</option>
+                                <option value="14">محل تجاري</option>
+                                <option value="15">ورشة صيانة</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>المدينة</label>
+                            <select class="form-control" name="city" required>
+                                <option value="">اختر المدينة</option>
+                                <option value="1">القاهرة</option>
+                                <option value="2">الجيزة</option>
+                                <option value="3">الإسكندرية</option>
+                                <option value="4">السادات</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>المنطقة</label>
+                            <select class="form-control" name="area" required>
+                                <option value="">اختر المنطقة</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>الموقع أو المول</label>
+                            <select class="form-control" name="location">
+                                <option value="">اختر الموقع</option>
+                                <option value="1">مول قرطبة</option>
+                                <option value="2">مول العرب</option>
+                                <option value="3">مول سيتي مول</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>العنوان التفصيلي</label>
+                            <input type="text" class="form-control" name="detailedAddress" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>رابط الموقع على الخريطة</label>
+                            <input type="url" class="form-control" name="mapLink" required>
+                        </div>
+                        <div class="form-group">
+                            <label>رقم التواصل</label>
+                            <input type="tel" class="form-control" name="phone" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>رابط واتساب</label>
+                            <input type="url" class="form-control" name="whatsappLink" required>
+                        </div>
+                        <div class="form-group">
+                            <label>البريد الإلكتروني</label>
+                            <input type="email" class="form-control" name="email" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>الموقع الإلكتروني</label>
+                            <input type="url" class="form-control" name="website">
+                        </div>
+                        <div class="form-group">
+                            <label>ساعات العمل</label>
+                            <input type="text" class="form-control" name="workingHours" placeholder="مثال: 9ص - 12ص" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>خدمات التوصيل</label>
+                            <select class="form-control" name="delivery" required>
+                                <option value="نعم">نعم</option>
+                                <option value="لا">لا</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>الباقة</label>
+                            <select class="form-control" name="package" required>
+                                <option value="">اختر الباقة</option>
+                                <option value="P001">الباقة الفضية (30 يوم)</option>
+                                <option value="P002">الباقة الذهبية (90 يوم)</option>
+                                <option value="P003">الباقة البلاتينية (180 يوم)</option>
+                                <option value="P004">الباقة الماسية (365 يوم)</option>
+                                <option value="P005">الباقة التجريبية (7 أيام)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>صورة شعار أو صورة المكان</label>
+                        <div class="file-upload">
+                            <input type="file" id="placeImage" accept="image/*" onchange="previewImage(this, 'placeImagePreview')">
+                            <label for="placeImage">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <br>اضغط لاختيار صورة
+                            </label>
+                        </div>
+                        <div id="placeImagePreview" class="preview-images"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>وصف مختصر</label>
+                        <textarea class="form-control" name="description" rows="3" required></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>كلمة المرور</label>
+                            <input type="password" class="form-control" name="password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>حالة المكان</label>
+                            <select class="form-control" name="status" required>
+                                <option value="نشط">نشط</option>
+                                <option value="غير نشط">غير نشط</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> حفظ المكان
+                    </button>
+                </form>
             </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="city" class="form-label">المدينة *</label>
-                    <input type="text" class="form-control" id="city" name="city" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="area" class="form-label">المنطقة *</label>
-                    <input type="text" class="form-control" id="area" name="area" required>
-                </div>
+            <!-- إدارة الإعلانات -->
+            <div id="ads-tab" class="tab-content" style="display: none;">
+                <h2><i class="fas fa-plus-circle"></i> إضافة إعلان جديد</h2>
+                <form id="adForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>المكان</label>
+                            <select class="form-control" name="placeId" required>
+                                <option value="">اختر المكان</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>نوع الإعلان</label>
+                            <select class="form-control" name="adType" required>
+                                <option value="">اختر نوع الإعلان</option>
+                                <option value="عرض خاص">عرض خاص</option>
+                                <option value="إعلان وجبة">إعلان وجبة</option>
+                                <option value="إعلان عام">إعلان عام</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>عنوان الإعلان</label>
+                            <input type="text" class="form-control" name="adTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label>كوبون خصم</label>
+                            <input type="text" class="form-control" name="coupon">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>وصف الإعلان</label>
+                        <textarea class="form-control" name="adDescription" rows="3" required></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>تاريخ البداية</label>
+                            <input type="date" class="form-control" name="startDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label>تاريخ النهاية</label>
+                            <input type="date" class="form-control" name="endDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>صور الإعلان (يمكن اختيار أكثر من صورة)</label>
+                        <div class="file-upload">
+                            <input type="file" id="adImages" accept="image/*" multiple onchange="previewMultipleImages(this, 'adImagesPreview')">
+                            <label for="adImages">
+                                <i class="fas fa-images"></i>
+                                <br>اضغط لاختيار الصور
+                            </label>
+                        </div>
+                        <div id="adImagesPreview" class="preview-images"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>فيديو الإعلان</label>
+                        <div class="file-upload">
+                            <input type="file" id="adVideo" accept="video/*" onchange="previewVideo(this, 'adVideoPreview')">
+                            <label for="adVideo">
+                                <i class="fas fa-video"></i>
+                                <br>اضغط لاختيار الفيديو
+                            </label>
+                        </div>
+                        <div id="adVideoPreview"></div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>الحالة</label>
+                            <select class="form-control" name="adStatus" required>
+                                <option value="مفتوح">مفتوح</option>
+                                <option value="مغلق">مغلق</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>حالة الإعلان</label>
+                            <select class="form-control" name="adActiveStatus" required>
+                                <option value="نشط">نشط</option>
+                                <option value="غير نشط">غير نشط</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> حفظ الإعلان
+                    </button>
+                </form>
             </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="mall" class="form-label">الموقع / المول</label>
-                    <input type="text" class="form-control" id="mall" name="mall">
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="address" class="form-label">العنوان التفصيلي</label>
-                    <input type="text" class="form-control" id="address" name="address">
+            <!-- الباقات -->
+            <div id="packages-tab" class="tab-content" style="display: none;">
+                <h2><i class="fas fa-gift"></i> الباقات المتاحة</h2>
+                <div class="packages-grid">
+                    <div class="package-card">
+                        <h3>الباقة الفضية</h3>
+                        <p>مدة الباقة: 30 يوم</p>
+                        <p>السعر: مجاني</p>
+                        <button class="btn btn-primary">اختيار الباقة</button>
+                    </div>
+                    <div class="package-card">
+                        <h3>الباقة الذهبية</h3>
+                        <p>مدة الباقة: 90 يوم</p>
+                        <p>السعر: 100 جنيه</p>
+                        <button class="btn btn-primary">اختيار الباقة</button>
+                    </div>
+                    <div class="package-card">
+                        <h3>الباقة البلاتينية</h3>
+                        <p>مدة الباقة: 180 يوم</p>
+                        <p>السعر: 180 جنيه</p>
+                        <button class="btn btn-primary">اختيار الباقة</button>
+                    </div>
+                    <div class="package-card">
+                        <h3>الباقة الماسية</h3>
+                        <p>مدة الباقة: 365 يوم</p>
+                        <p>السعر: 300 جنيه</p>
+                        <button class="btn btn-primary">اختيار الباقة</button>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div class="mb-3">
-                <label for="maplink" class="form-label">رابط الموقع على الخريطة</label>
-                <input type="url" class="form-control" id="maplink" name="maplink">
-            </div>
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>جاري المعالجة...</p>
+        </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="phone" class="form-label">رقم الهاتف *</label>
-                    <input type="tel" class="form-control" id="phone" name="phone" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="whatsapp" class="form-label">رابط واتساب</label>
-                    <input type="url" class="form-control" id="whatsapp" name="whatsapp">
-                </div>
-            </div>
+        <div class="alert alert-success" id="successAlert">
+            <i class="fas fa-check-circle"></i> تم الحفظ بنجاح!
+        </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="facebook" class="form-label">رابط فيسبوك</label>
-                    <input type="url" class="form-control" id="facebook" name="facebook">
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="instagram" class="form-label">رابط انستجرام</label>
-                    <input type="url" class="form-control" id="instagram" name="instagram">
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="tiktok" class="form-label">رابط تيك توك</label>
-                    <input type="url" class="form-control" id="tiktok" name="tiktok">
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="snap" class="form-label">رابط سناب شات</label>
-                    <input type="url" class="form-control" id="snap" name="snap">
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="logo" class="form-label">رابط شعار المحل</label>
-                    <input type="url" class="form-control" id="logo" name="logo">
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="password" class="form-label">كلمة المرور</label>
-                    <input type="password" class="form-control" id="password" name="password">
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="total_visits" class="form-label">عدد الزيارات الكلية</label>
-                    <input type="number" class="form-control" id="total_visits" name="total_visits" value="0">
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="daily_visits" class="form-label">عدد الزيارات اليومية</label>
-                    <input type="number" class="form-control" id="daily_visits" name="daily_visits" value="0">
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label for="description" class="form-label">وصف مختصر</label>
-                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-            </div>
-
-            <div class="text-center">
-                <button type="submit" class="btn btn-primary btn-lg">تسجيل المحل</button>
-            </div>
-        </form>
+        <div class="alert alert-error" id="errorAlert">
+            <i class="fas fa-exclamation-circle"></i> حدث خطأ أثناء الحفظ!
+        </div>
     </div>
 
-    <script src="newscript.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
