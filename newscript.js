@@ -3,15 +3,14 @@ const API_URL = "https://script.google.com/macros/s/AKfycbx-fMI2hsJ5LvKKh9fzd3Vi
 const SECRET_TOKEN = "public1"; // لازم يكون نفس التوكن في Google Script
 
 // دالة إرسال البيانات
-async function sendPlaceData(placeData) {
+async function sendPlaceData(formData) {
   try {
+    // إضافة التوكن للـ FormData
+    formData.append("token", SECRET_TOKEN);
+    
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: SECRET_TOKEN,
-        ...placeData
-      })
+      body: formData
     });
 
     const result = await response.json();
@@ -33,15 +32,16 @@ async function sendPlaceData(placeData) {
 document.getElementById("placeForm").addEventListener("submit", function(e) {
   e.preventDefault();
 
-  const placeData = {
-    name: document.getElementById("name").value,
-    location: document.getElementById("location").value,
-    details: document.getElementById("details").value,
-    phone: document.getElementById("phone").value,
-    workdays: document.getElementById("workdays").value,
-    from_hour: document.getElementById("from_hour").value,
-    to_hour: document.getElementById("to_hour").value
-  };
+  // استخدام FormData بدلاً من JSON
+  const formData = new FormData();
+  
+  formData.append("name", document.getElementById("name").value);
+  formData.append("location", document.getElementById("location").value);
+  formData.append("details", document.getElementById("details").value);
+  formData.append("phone", document.getElementById("phone").value);
+  formData.append("workdays", document.getElementById("workdays").value);
+  formData.append("from_hour", document.getElementById("from_hour").value);
+  formData.append("to_hour", document.getElementById("to_hour").value);
 
-  sendPlaceData(placeData);
+  sendPlaceData(formData);
 });
