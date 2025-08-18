@@ -1,5 +1,5 @@
-// متغيرات عامة
-const API_URL = 'https://script.google.com/macros/s/AKfycbx-fMI2hsJ5LvKKh9fzd3Vidn2TeGtEbHV9Nyj2nZBy9xQk9Uy_uL-m3hrDqp1uUWAPwA/exec'; // ضع رابط Web App من Apps Script (المنتهي بـ /exec)
+// متغيرات عامة — ضع هنا رابط Web App الصحيح (المنتهي بـ /exec)
+const API_URL = 'https://script.google.com/macros/s/AKfycbx-fMI2hsJ5LvKKh9fzd3Vidn2TeGtEbHV9Nyj2nZBy9xQk9Uy_uL-m3hrDqp1uUWAPwA/exec';
 let currentTab = 'places';
 let uploadedImages = [];
 let uploadedVideos = [];
@@ -68,7 +68,6 @@ function showTab(tabName) {
     document.querySelectorAll('.tab').forEach(tab => { tab.classList.remove('active'); });
     const target = document.getElementById(tabName + '-tab');
     if (target) target.style.display = 'block';
-    // event may be undefined if called programmatically
     if (typeof event !== 'undefined' && event && event.target) event.target.classList.add('active');
     currentTab = tabName;
 }
@@ -149,23 +148,26 @@ function previewVideo(input, previewId) {
     }
 }
 
-// تحميل الأماكن للإعلانات (يبقى كما هو؛ يعتمد على الـ API إذا دعم استدعاء الأماكن)
+// تحميل الأماكن للإعلانات (يتعامل مع أشكال استجابة مختلفة)
 function loadPlacesForAds() {
     const placeSelect = document.querySelector('select[name="placeId"]');
     if (!placeSelect) return;
     placeSelect.innerHTML = '<option value="">اختر المكان</option>';
     if (API_URL && API_URL.startsWith('http')) {
-        // إبقاء GET قائم لأن الخادم قد لا يدعم action=places عبر POST
         fetch(`${API_URL}?action=places`)
             .then(r => r.json())
             .then(data => {
-                if (data && data.success && Array.isArray(data.places)) {
-                    data.places.forEach(place => {
+                // دعم عدة أشكال: top-level places أو nested data.places
+                const places = data.places || (data.data && data.data.places) || [];
+                if (data && data.success && Array.isArray(places)) {
+                    places.forEach(place => {
                         const option = document.createElement('option');
                         option.value = place.id;
                         option.textContent = place.name;
                         placeSelect.appendChild(option);
                     });
+                } else {
+                    appendFallbackPlaces(placeSelect);
                 }
             })
             .catch(() => { appendFallbackPlaces(placeSelect); });
@@ -285,10 +287,10 @@ async function uploadToGoogleDrive(file, folder) {
     if (!API_URL || !API_URL.startsWith('http')) {
         return `https://drive.google.com/file/d/${Math.random().toString(36).substr(2, 9)}/view`;
     }
-    // نقرأ الملف كـ base64 (كما كان موجوداً سابقاً) ثم نضعه داخل FormData
+    // نقرأ الملف كـ base64 ثم نضعه داخل FormData
     const base64 = await readFileAsBase64(file);
     const form = new FormData();
-    form.append('action', 'uploadFile'); // أو uploadMedia بحسب الخادم — الخادم عندنا يتقبل uploadFile/uploadMedia
+    form.append('action', 'uploadFile'); // أو uploadMedia — الخادم يقبل كلا الاسمين
     form.append('folder', folder);
     form.append('fileName', file.name);
     form.append('mimeType', file.type || 'application/octet-stream');
@@ -296,7 +298,7 @@ async function uploadToGoogleDrive(file, folder) {
 
     const res = await fetch(API_URL, {
         method: 'POST',
-        body: form // نترك المتصفح يضع Content-Type boundary
+        body: form
     });
 
     const data = await res.json().catch(() => null);
@@ -304,7 +306,6 @@ async function uploadToGoogleDrive(file, folder) {
         const errMsg = (data && (data.error || (data.data && data.data.error))) || 'فشل رفع الملف';
         throw new Error(errMsg);
     }
-    // دعم عدة أشكال للإخراج
     const fileUrl = data.fileUrl || (data.data && (data.data.fileUrl || data.data.url)) || (data.data && data.data);
     if (!fileUrl) throw new Error('تعذر استخراج رابط الملف من استجابة الخادم');
     return fileUrl;
