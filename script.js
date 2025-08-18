@@ -1,4 +1,5 @@
 // متغيرات عامة
+const API_URL = 'PUT_YOUR_WEB_APP_URL_HERE'; // ضع رابط Web App من Apps Script (المنتهي بـ /exec)
 let currentTab = 'places';
 let uploadedImages = [];
 let uploadedVideos = [];
@@ -188,17 +189,41 @@ function previewVideo(input, previewId) {
 
 // تحميل الأماكن للإعلانات
 function loadPlacesForAds() {
-    // في التطبيق الحقيقي، سيتم جلب البيانات من Google Sheets
-    const places = [
+    const placeSelect = document.querySelector('select[name="placeId"]');
+    placeSelect.innerHTML = '<option value="">اختر المكان</option>';
+    
+    // محاولة الجلب من Apps Script
+    if (API_URL && API_URL.startsWith('http')) {
+        fetch(`${API_URL}?action=places`)
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.success && Array.isArray(data.places)) {
+                    data.places.forEach(place => {
+                        const option = document.createElement('option');
+                        option.value = place.id;
+                        option.textContent = place.name;
+                        placeSelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(() => {
+                // في حال الفشل، استخدام بيانات افتراضية
+                appendFallbackPlaces(placeSelect);
+            });
+    } else {
+        appendFallbackPlaces(placeSelect);
+    }
+}
+
+function appendFallbackPlaces(placeSelect) {
+    const fallback = [
         { id: '101', name: 'كافيه مزاج' },
         { id: '102', name: 'مطعم الشيف' },
         { id: '103', name: 'كافيه مزاج' },
         { id: '104', name: 'مطعم الشيف' },
         { id: '105', name: 'مطعم الشيف' }
     ];
-    
-    const placeSelect = document.querySelector('select[name="placeId"]');
-    places.forEach(place => {
+    fallback.forEach(place => {
         const option = document.createElement('option');
         option.value = place.id;
         option.textContent = place.name;
@@ -234,6 +259,11 @@ async function handlePlaceSubmit(event) {
             status: formData.get('status'),
             image: uploadedImages[0] || null
         };
+        
+        if (!validateDates() || !validateFiles()) {
+            showLoading(false);
+            return;
+        }
         
         // رفع الصورة إلى Google Drive
         let imageUrl = '';
@@ -279,6 +309,11 @@ async function handleAdSubmit(event) {
             video: uploadedVideos[0] || null
         };
         
+        if (!validateDates() || !validateFiles()) {
+            showLoading(false);
+            return;
+        }
+        
         // رفع الصور والفيديو إلى Google Drive
         const imageUrls = [];
         for (let image of adData.images) {
@@ -309,43 +344,104 @@ async function handleAdSubmit(event) {
     }
 }
 
-// رفع ملف إلى Google Drive
+// رفع ملف إلى Google Drive عبر Apps Script
 async function uploadToGoogleDrive(file, folder) {
-    // في التطبيق الحقيقي، سيتم استخدام Google Apps Script
-    // هذا مثال للتوضيح فقط
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            // محاكاة رابط Google Drive
-            const fakeUrl = `https://drive.google.com/file/d/${Math.random().toString(36).substr(2, 9)}/view`;
-            resolve(fakeUrl);
-        }, 1000);
+    if (!API_URL || !API_URL.startsWith('http')) {
+        // في حال عدم ضبط API_URL، محاكاة رابط
+        return `https://drive.google.com/file/d/${Math.random().toString(36).substr(2, 9)}/view`;
+    }
+    const base64 = await readFileAsBase64(file);
+    const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'uploadFile',
+            folder,
+            fileName: file.name,
+            mimeType: file.type,
+            fileData: base64
+        })
     });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'فشل رفع الملف');
+    return data.fileUrl;
 }
 
-// حفظ مكان في Google Sheets
+// حفظ مكان في Google Sheets عبر Apps Script
 async function savePlaceToSheet(placeData, imageUrl) {
-    // في التطبيق الحقيقي، سيتم استخدام Google Apps Script
-    // هذا مثال للتوضيح فقط
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            console.log('تم حفظ المكان:', placeData);
-            console.log('رابط الصورة:', imageUrl);
-            resolve();
-        }, 1000);
+    if (!API_URL || !API_URL.startsWith('http')) {
+        // محاكاة نجاح
+        return;
+    }
+    const payload = {
+        action: 'registerPlace',
+        name: placeData.placeName,
+        activity: placeData.activityType,
+        city: placeData.city,
+        area: placeData.area,
+        mall: placeData.location,
+        address: placeData.detailedAddress,
+        mapLink: placeData.mapLink,
+        phone: placeData.phone,
+        whatsappLink: placeData.whatsappLink,
+        email: placeData.email,
+        website: placeData.website,
+        hours: placeData.workingHours,
+        delivery: placeData.delivery,
+        description: placeData.description,
+        packageId: placeData.package,
+        password: placeData.password,
+        logoUrl: imageUrl || ''
+    };
+    const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
     });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'فشل حفظ المكان');
 }
 
-// حفظ إعلان في Google Sheets
+// حفظ إعلان في Google Sheets عبر Apps Script
 async function saveAdToSheet(adData, imageUrls, videoUrl) {
-    // في التطبيق الحقيقي، سيتم استخدام Google Apps Script
-    // هذا مثال للتوضيح فقط
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            console.log('تم حفظ الإعلان:', adData);
-            console.log('روابط الصور:', imageUrls);
-            console.log('رابط الفيديو:', videoUrl);
-            resolve();
-        }, 1000);
+    if (!API_URL || !API_URL.startsWith('http')) {
+        // محاكاة نجاح
+        return;
+    }
+    const payload = {
+        action: 'addAd',
+        placeId: adData.placeId,
+        adType: adData.adType,
+        adTitle: adData.adTitle,
+        adDescription: adData.adDescription,
+        startDate: adData.startDate,
+        endDate: adData.endDate,
+        coupon: adData.coupon || '',
+        imageUrls: imageUrls || [],
+        videoUrl: videoUrl || '',
+        adStatus: adData.adStatus,
+        adActiveStatus: adData.adActiveStatus
+    };
+    const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'فشل حفظ الإعلان');
+}
+
+// محول ملف إلى Base64 (بدون بادئة data:)
+function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result;
+            const base64 = String(result).split(',')[1] || '';
+            resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
     });
 }
 
