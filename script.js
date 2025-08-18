@@ -15,18 +15,23 @@ document.addEventListener('DOMContentLoaded', function() {
 // تهيئة التطبيق
 function initializeApp() {
     const today = new Date().toISOString().split('T')[0];
-    document.querySelector('input[name="startDate"]').value = today;
+    const startInput = document.querySelector('input[name="startDate"]');
+    const endInput = document.querySelector('input[name="endDate"]');
+    if (startInput) startInput.value = today;
 
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
-    document.querySelector('input[name="endDate"]').value = nextWeek.toISOString().split('T')[0];
+    if (endInput) endInput.value = nextWeek.toISOString().split('T')[0];
 }
 
 // إعداد مستمعي الأحداث
 function setupEventListeners() {
-    document.getElementById('placeForm').addEventListener('submit', handlePlaceSubmit);
-    document.getElementById('adForm').addEventListener('submit', handleAdSubmit);
-    document.querySelector('select[name="city"]').addEventListener('change', updateAreas);
+    const placeForm = document.getElementById('placeForm');
+    const adForm = document.getElementById('adForm');
+    const citySelect = document.querySelector('select[name="city"]');
+    if (placeForm) placeForm.addEventListener('submit', handlePlaceSubmit);
+    if (adForm) adForm.addEventListener('submit', handleAdSubmit);
+    if (citySelect) citySelect.addEventListener('change', updateAreas);
 }
 
 // إعداد تخطيط المدن والمناطق
@@ -44,9 +49,10 @@ function setupCityAreaMapping() {
 function updateAreas() {
     const citySelect = document.querySelector('select[name="city"]');
     const areaSelect = document.querySelector('select[name="area"]');
+    if (!citySelect || !areaSelect) return;
     const selectedCity = citySelect.value;
     areaSelect.innerHTML = '<option value="">اختر المنطقة</option>';
-    if (selectedCity && window.cityAreaMap[selectedCity]) {
+    if (selectedCity && window.cityAreaMap && window.cityAreaMap[selectedCity]) {
         window.cityAreaMap[selectedCity].forEach(area => {
             const option = document.createElement('option');
             option.value = area.id;
@@ -60,14 +66,17 @@ function updateAreas() {
 function showTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(tab => { tab.style.display = 'none'; });
     document.querySelectorAll('.tab').forEach(tab => { tab.classList.remove('active'); });
-    document.getElementById(tabName + '-tab').style.display = 'block';
-    event.target.classList.add('active');
+    const target = document.getElementById(tabName + '-tab');
+    if (target) target.style.display = 'block';
+    // event may be undefined if called programmatically
+    if (typeof event !== 'undefined' && event && event.target) event.target.classList.add('active');
     currentTab = tabName;
 }
 
 // معاينة صورة واحدة
 function previewImage(input, previewId) {
     const preview = document.getElementById(previewId);
+    if (!preview) return;
     preview.innerHTML = '';
     if (input.files && input.files[0]) {
         const file = input.files[0];
@@ -89,6 +98,7 @@ function previewImage(input, previewId) {
 // معاينة صور متعددة
 function previewMultipleImages(input, previewId) {
     const preview = document.getElementById(previewId);
+    if (!preview) return;
     preview.innerHTML = '';
     uploadedImages = [];
     if (input.files) {
@@ -104,7 +114,7 @@ function previewMultipleImages(input, previewId) {
                 removeBtn.innerHTML = '×';
                 removeBtn.onclick = function() {
                     div.remove();
-                    uploadedImages.splice(index, 1);
+                    uploadedImages = uploadedImages.filter((f, i) => i !== index);
                 };
                 div.appendChild(img);
                 div.appendChild(removeBtn);
@@ -119,6 +129,7 @@ function previewMultipleImages(input, previewId) {
 // معاينة فيديو
 function previewVideo(input, previewId) {
     const preview = document.getElementById(previewId);
+    if (!preview) return;
     preview.innerHTML = '';
     uploadedVideos = [];
     if (input.files && input.files[0]) {
@@ -138,11 +149,13 @@ function previewVideo(input, previewId) {
     }
 }
 
-// تحميل الأماكن للإعلانات
+// تحميل الأماكن للإعلانات (يبقى كما هو؛ يعتمد على الـ API إذا دعم استدعاء الأماكن)
 function loadPlacesForAds() {
     const placeSelect = document.querySelector('select[name="placeId"]');
+    if (!placeSelect) return;
     placeSelect.innerHTML = '<option value="">اختر المكان</option>';
     if (API_URL && API_URL.startsWith('http')) {
+        // إبقاء GET قائم لأن الخادم قد لا يدعم action=places عبر POST
         fetch(`${API_URL}?action=places`)
             .then(r => r.json())
             .then(data => {
@@ -210,7 +223,8 @@ async function handlePlaceSubmit(event) {
         await savePlaceToSheet(placeData, imageUrl);
         showSuccess('تم حفظ المكان بنجاح!');
         event.target.reset();
-        document.getElementById('placeImagePreview').innerHTML = '';
+        const preview = document.getElementById('placeImagePreview');
+        if (preview) preview.innerHTML = '';
         uploadedImages = [];
     } catch (error) {
         console.error('خطأ في حفظ المكان:', error);
@@ -252,8 +266,10 @@ async function handleAdSubmit(event) {
         await saveAdToSheet(adData, imageUrls, videoUrl);
         showSuccess('تم حفظ الإعلان بنجاح!');
         event.target.reset();
-        document.getElementById('adImagesPreview').innerHTML = '';
-        document.getElementById('adVideoPreview').innerHTML = '';
+        const imgPreview = document.getElementById('adImagesPreview');
+        const vidPreview = document.getElementById('adVideoPreview');
+        if (imgPreview) imgPreview.innerHTML = '';
+        if (vidPreview) vidPreview.innerHTML = '';
         uploadedImages = [];
         uploadedVideos = [];
     } catch (error) {
@@ -264,84 +280,90 @@ async function handleAdSubmit(event) {
     }
 }
 
-// رفع ملف إلى Google Drive عبر Apps Script
+// رفع ملف إلى Google Drive عبر Apps Script (نرسل FormData مع base64 في حقل fileData)
 async function uploadToGoogleDrive(file, folder) {
     if (!API_URL || !API_URL.startsWith('http')) {
         return `https://drive.google.com/file/d/${Math.random().toString(36).substr(2, 9)}/view`;
     }
+    // نقرأ الملف كـ base64 (كما كان موجوداً سابقاً) ثم نضعه داخل FormData
     const base64 = await readFileAsBase64(file);
+    const form = new FormData();
+    form.append('action', 'uploadFile'); // أو uploadMedia بحسب الخادم — الخادم عندنا يتقبل uploadFile/uploadMedia
+    form.append('folder', folder);
+    form.append('fileName', file.name);
+    form.append('mimeType', file.type || 'application/octet-stream');
+    form.append('fileData', base64);
+
     const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            action: 'uploadFile',
-            folder,
-            fileName: file.name,
-            mimeType: file.type,
-            fileData: base64
-        })
+        body: form // نترك المتصفح يضع Content-Type boundary
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'فشل رفع الملف');
-    return data.fileUrl;
+
+    const data = await res.json().catch(() => null);
+    if (!data || !data.success) {
+        const errMsg = (data && (data.error || (data.data && data.data.error))) || 'فشل رفع الملف';
+        throw new Error(errMsg);
+    }
+    // دعم عدة أشكال للإخراج
+    const fileUrl = data.fileUrl || (data.data && (data.data.fileUrl || data.data.url)) || (data.data && data.data);
+    if (!fileUrl) throw new Error('تعذر استخراج رابط الملف من استجابة الخادم');
+    return fileUrl;
 }
 
-// حفظ مكان في Google Sheets عبر Apps Script
+// حفظ مكان في Google Sheets عبر Apps Script (نرسل FormData بدلاً من JSON)
 async function savePlaceToSheet(placeData, imageUrl) {
     if (!API_URL || !API_URL.startsWith('http')) { return; }
-    const payload = {
-        action: 'registerPlace',
-        name: placeData.placeName,
-        activity: placeData.activityType,
-        city: placeData.city,
-        area: placeData.area,
-        mall: placeData.location,
-        address: placeData.detailedAddress,
-        mapLink: placeData.mapLink,
-        phone: placeData.phone,
-        whatsappLink: placeData.whatsappLink,
-        email: placeData.email,
-        website: placeData.website,
-        hours: placeData.workingHours,
-        delivery: placeData.delivery,
-        description: placeData.description,
-        packageId: placeData.package,
-        password: placeData.password,
-        logoUrl: imageUrl || ''
-    };
+    const form = new FormData();
+    form.append('action', 'registerPlace');
+    form.append('name', placeData.placeName || '');
+    form.append('activity', placeData.activityType || '');
+    form.append('city', placeData.city || '');
+    form.append('area', placeData.area || '');
+    form.append('mall', placeData.location || '');
+    form.append('address', placeData.detailedAddress || '');
+    form.append('mapLink', placeData.mapLink || '');
+    form.append('phone', placeData.phone || '');
+    form.append('whatsappLink', placeData.whatsappLink || '');
+    form.append('email', placeData.email || '');
+    form.append('website', placeData.website || '');
+    form.append('hours', placeData.workingHours || '');
+    form.append('delivery', placeData.delivery || '');
+    form.append('description', placeData.description || '');
+    form.append('packageId', placeData.package || '');
+    form.append('password', placeData.password || '');
+    form.append('logoUrl', imageUrl || '');
+
     const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: form
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'فشل حفظ المكان');
+    const data = await res.json().catch(() => null);
+    if (!data || !data.success) throw new Error((data && (data.error || data.message)) || 'فشل حفظ المكان');
 }
 
-// حفظ إعلان في Google Sheets عبر Apps Script
+// حفظ إعلان في Google Sheets عبر Apps Script (نستخدم FormData)
 async function saveAdToSheet(adData, imageUrls, videoUrl) {
     if (!API_URL || !API_URL.startsWith('http')) { return; }
-    const payload = {
-        action: 'addAd',
-        placeId: adData.placeId,
-        adType: adData.adType,
-        adTitle: adData.adTitle,
-        adDescription: adData.adDescription,
-        startDate: adData.startDate,
-        endDate: adData.endDate,
-        coupon: adData.coupon || '',
-        imageUrls: imageUrls || [],
-        videoUrl: videoUrl || '',
-        adStatus: adData.adStatus,
-        adActiveStatus: adData.adActiveStatus
-    };
+    const form = new FormData();
+    form.append('action', 'addAd');
+    form.append('placeId', adData.placeId || '');
+    form.append('adType', adData.adType || '');
+    form.append('adTitle', adData.adTitle || '');
+    form.append('adDescription', adData.adDescription || '');
+    form.append('startDate', adData.startDate || '');
+    form.append('endDate', adData.endDate || '');
+    form.append('coupon', adData.coupon || '');
+    form.append('imageUrls', JSON.stringify(imageUrls || []));
+    form.append('videoUrl', videoUrl || '');
+    form.append('adStatus', adData.adStatus || '');
+    form.append('adActiveStatus', adData.adActiveStatus || '');
+
     const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: form
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'فشل حفظ الإعلان');
+    const data = await res.json().catch(() => null);
+    if (!data || !data.success) throw new Error((data && (data.error || data.message)) || 'فشل حفظ الإعلان');
 }
 
 // محول ملف إلى Base64 (بدون بادئة data:)
@@ -361,23 +383,28 @@ function readFileAsBase64(file) {
 // رسائل وحالة
 function showSuccess(message) {
     const alert = document.getElementById('successAlert');
+    if (!alert) return;
     alert.textContent = message;
     alert.style.display = 'block';
     setTimeout(() => { alert.style.display = 'none'; }, 5000);
 }
 function showError(message) {
     const alert = document.getElementById('errorAlert');
+    if (!alert) return;
     alert.textContent = message;
     alert.style.display = 'block';
     setTimeout(() => { alert.style.display = 'none'; }, 5000);
 }
 function showLoading(show) {
     const loading = document.getElementById('loading');
+    if (!loading) return;
     loading.style.display = show ? 'block' : 'none';
 }
 function validateDates() {
-    const startDate = document.querySelector('input[name="startDate"]').value;
-    const endDate = document.querySelector('input[name="endDate"]').value;
+    const startInput = document.querySelector('input[name="startDate"]');
+    const endInput = document.querySelector('input[name="endDate"]');
+    const startDate = startInput ? startInput.value : '';
+    const endDate = endInput ? endInput.value : '';
     if (startDate && endDate && startDate >= endDate) {
         showError('تاريخ النهاية يجب أن يكون بعد تاريخ البداية');
         return false;
