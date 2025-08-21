@@ -783,13 +783,41 @@
 // script.js - كامل (مُحدّث: يعرض الإعلانات للمحل، ويدعم تعديل/حذف)
 // script.js - كامل (مُحدّث: يعرض الإعلانات للمحل، ويدعم تعديل/حذف)
 // ضع رابط Web App الصحيح هنا بعد نشر الـ Apps Script
+// script.js - مراجعة + تحسينات (ضعت API_URL للرابط الذي زوّدتني به)
 const API_URL = 'https://script.google.com/macros/s/AKfycbx-fMI2hsJ5LvKKh9fzd3Vidn2TeGtEbHV9Nyj2nZBy9xQk9Uy_uL-m3hrDqp1uUWAPwA/exec';
 
 let currentTab = 'places';
 let uploadedImages = [];
 let uploadedVideos = [];
-let editingAdId = null; // when not null, ad form is in "edit" mode
+let editingAdId = null;
 
+// ------------------ Utilities for API ------------------
+async function apiFetch(url, opts = {}) {
+  try {
+    const res = await fetch(url, opts);
+    const text = await res.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch(e) { data = text; }
+    return { ok: res.ok, status: res.status, data, raw: text };
+  } catch (err) {
+    return { ok: false, status: 0, error: err.message || String(err) };
+  }
+}
+
+async function apiPost(payload, asForm = false) {
+  if (asForm) {
+    // payload is FormData
+    return apiFetch(API_URL, { method: 'POST', body: payload });
+  } else {
+    return apiFetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  }
+}
+
+// ------------------ Init ------------------
 document.addEventListener('DOMContentLoaded', () => {
   initializeApp();
   setupEventListeners();
@@ -817,49 +845,87 @@ function setupEventListeners() {
   if (citySelect) citySelect.addEventListener('change', updateAreas);
 }
 
-// ---------- Lookups & population ----------
+// ------------------ Lookups ------------------
 async function loadLookupsAndPopulate() {
   try {
-    const res = await fetch(`${API_URL}?action=getLookups`);
-    const json = await res.json().catch(()=>null);
-    const data = (json && json.success && json.data) ? json.data : null;
+    const resp = await apiFetch(`${API_URL}?action=getLookups`);
+    if (!resp.ok) {
+      console.warn('getLookups failed', resp);
+      return;
+    }
+    const json = resp.data;
+    const data = (json && json.success && json.data) ? json.data : json;
     if (!data) return;
+    // activities
     const actSelect = document.querySelector('select[name="activityType"]');
     if (actSelect) {
       actSelect.innerHTML = '<option value="">اختر نوع النشاط</option>';
-      (data.activities || []).forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.name; actSelect.appendChild(opt); });
+      (data.activities || []).forEach(a => {
+        const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.name; actSelect.appendChild(opt);
+      });
     }
+    // cities
     const citySelect = document.querySelector('select[name="city"]');
     if (citySelect) {
       citySelect.innerHTML = '<option value="">اختر المدينة</option>';
-      (data.cities || []).forEach(c => { const opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.name; citySelect.appendChild(opt); });
+      (data.cities || []).forEach(c => {
+        const opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.name; citySelect.appendChild(opt);
+      });
     }
+    // build cityAreaMap
     const cityAreaMap = {};
-    (data.areas || []).forEach(a => { const cid = a.raw && a.raw['ID المدينة'] ? String(a.raw['ID المدينة']) : ''; if (!cityAreaMap[cid]) cityAreaMap[cid] = []; cityAreaMap[cid].push({ id: a.id, name: a.name }); });
+    (data.areas || []).forEach(a => {
+      const cid = a.raw && a.raw['ID المدينة'] ? String(a.raw['ID المدينة']) : '';
+      if (!cityAreaMap[cid]) cityAreaMap[cid] = [];
+      cityAreaMap[cid].push({ id: a.id, name: a.name });
+    });
     window.cityAreaMap = cityAreaMap;
+    // sites
     const siteSelects = document.querySelectorAll('select[name="location"]');
-    siteSelects.forEach(s => { s.innerHTML = '<option value="">اختر الموقع</option>'; (data.sites || []).forEach(site => { const opt = document.createElement('option'); opt.value = site.id; opt.textContent = site.name; s.appendChild(opt); }); });
+    siteSelects.forEach(s => {
+      s.innerHTML = '<option value="">اختر الموقع</option>';
+      (data.sites || []).forEach(site => {
+        const opt = document.createElement('option'); opt.value = site.id; opt.textContent = site.name; s.appendChild(opt);
+      });
+    });
+    // packages
     const pkgSelect = document.querySelector('select[name="package"]');
-    if (pkgSelect) { pkgSelect.innerHTML = '<option value="">اختر الباقة</option>'; (data.packages || []).forEach(p => { const opt = document.createElement('option'); opt.value = p.id; opt.textContent = `${p.name} (${p.duration} يوم)`; pkgSelect.appendChild(opt); }); }
+    if (pkgSelect) {
+      pkgSelect.innerHTML = '<option value="">اختر الباقة</option>';
+      (data.packages || []).forEach(p => {
+        const opt = document.createElement('option'); opt.value = p.id; opt.textContent = `${p.name} (${p.duration} يوم)`; pkgSelect.appendChild(opt);
+      });
+    }
+    // packages grid
     const pkgGrid = document.getElementById('packagesGrid');
     if (pkgGrid) {
       pkgGrid.innerHTML = '';
       (data.packages || []).forEach(p => {
         const div = document.createElement('div'); div.style.background = '#fff'; div.style.padding = '12px'; div.style.borderRadius = '8px';
-        const h = document.createElement('h3'); h.textContent = p.name; const d = document.createElement('p'); d.textContent = `المدة: ${p.duration} يوم`;
+        const h = document.createElement('h3'); h.textContent = p.name;
+        const d = document.createElement('p'); d.textContent = `المدة: ${p.duration} يوم`;
         const desc = document.createElement('p'); desc.textContent = p.raw && p.raw['وصف الباقة'] ? p.raw['وصف الباقة'] : '';
-        const btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = 'اختر الباقة'; btn.onclick = () => choosePackageAPI(p.id);
+        const btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = 'اختر الباقة';
+        btn.onclick = () => choosePackageAPI(p.id);
         div.appendChild(h); div.appendChild(d); if (desc.textContent) div.appendChild(desc); div.appendChild(btn);
         pkgGrid.appendChild(div);
       });
     }
+    // payments
     window.availablePaymentMethods = (data.payments || []).map(pm => ({ id: pm.raw && pm.raw['معرف الدفع'] ? pm.raw['معرف الدفع'] : pm.id, name: pm.name || pm.raw && pm.raw['طرق الدفع'] || '' }));
+    // if logged, prefill and check quota
     const stored = getLoggedPlace();
-    if (stored && stored.raw) { tryPrefillPlaceForm(stored); if (stored.id) loadAdsForPlace(stored.id); }
+    if (stored && stored.raw) {
+      await tryPrefillPlaceForm(stored);
+      if (stored.id) { checkAdQuotaAndToggle(stored.id); loadAdsForPlace(stored.id); }
+    }
     updateAdsTabVisibility();
-  } catch (err) { console.warn('Failed to load lookups', err); }
+  } catch (err) {
+    console.error('loadLookupsAndPopulate error', err);
+  }
 }
 
+// ------------------ City areas ------------------
 function updateAreas() {
   const citySelect = document.querySelector('select[name="city"]');
   const areaSelect = document.querySelector('select[name="area"]');
@@ -867,32 +933,95 @@ function updateAreas() {
   areaSelect.innerHTML = '<option value="">اختر المنطقة</option>';
   const selected = citySelect.value;
   if (selected && window.cityAreaMap && window.cityAreaMap[selected]) {
-    window.cityAreaMap[selected].forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.name; areaSelect.appendChild(opt); });
+    window.cityAreaMap[selected].forEach(a => {
+      const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.name; areaSelect.appendChild(opt);
+    });
   }
 }
 
-// ---------- Previews ----------
-function previewImage(input, previewId) { const preview = document.getElementById(previewId); if (!preview) return; preview.innerHTML = ''; if (input.files && input.files[0]) { const file = input.files[0]; const reader = new FileReader(); reader.onload = e => { const img = document.createElement('img'); img.src = e.target.result; img.style.borderRadius = '8px'; preview.appendChild(img); uploadedImages = [file]; }; reader.readAsDataURL(file); } }
-function previewMultipleImages(input, previewId) { const preview = document.getElementById(previewId); if (!preview) return; preview.innerHTML = ''; uploadedImages = []; if (!input.files) return; const files = Array.from(input.files).slice(0, 8); if (input.files.length > 8) showError('يمكن تحميل حتى 8 صور كحد أقصى. سيتم أخذ أول 8 صور.'); files.forEach((file, index) => { const reader = new FileReader(); reader.onload = e => { const div = document.createElement('div'); div.className = 'preview-image'; const img = document.createElement('img'); img.src = e.target.result; const removeBtn = document.createElement('button'); removeBtn.className = 'remove-image'; removeBtn.innerHTML = '×'; removeBtn.onclick = () => { div.remove(); uploadedImages = uploadedImages.filter((f, i) => i !== index); }; div.appendChild(img); div.appendChild(removeBtn); preview.appendChild(div); uploadedImages.push(file); }; reader.readAsDataURL(file); }); }
-function previewVideo(input, previewId) { const preview = document.getElementById(previewId); if (!preview) return; preview.innerHTML = ''; uploadedVideos = []; if (input.files && input.files[0]) { const file = input.files[0]; const reader = new FileReader(); reader.onload = e => { const video = document.createElement('video'); video.src = e.target.result; video.controls = true; video.style.width = '100%'; preview.appendChild(video); uploadedVideos = [file]; }; reader.readAsDataURL(file); } }
-
-// ---------- Load places for ad select ----------
-function loadPlacesForAds() {
-  const placeSelects = document.querySelectorAll('select[name="placeId"]');
-  placeSelects.forEach(ps => { ps.innerHTML = '<option value="">اختر المكان</option>'; });
-  if (API_URL && API_URL.startsWith('http')) {
-    fetch(`${API_URL}?action=places`).then(r => r.json()).then(data => {
-      const places = data.places || (data.data && data.data.places) || [];
-      places.forEach(p => { placeSelects.forEach(ps => { const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; ps.appendChild(opt); }); });
-      const logged = getLoggedPlace();
-      if (logged && logged.id) { placeSelects.forEach(ps => { ps.value = logged.id; ps.disabled = true; }); document.getElementById('tab-ads').style.display = 'block'; loadAdsForPlace(logged.id); }
-      else { placeSelects.forEach(ps => { ps.disabled = false; }); document.getElementById('tab-ads').style.display = 'none'; }
-      updateAdsTabVisibility();
-    }).catch(err => { console.warn('loadPlacesForAds failed', err); updateAdsTabVisibility(); });
-  } else updateAdsTabVisibility();
+// ------------------ Tabs ------------------
+function showTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const target = document.getElementById(tabName + '-tab');
+  if (target) target.style.display = 'block';
+  const tabEl = document.getElementById('tab-' + tabName);
+  if (tabEl) tabEl.classList.add('active');
+  currentTab = tabName;
 }
 
-// ---------- Place save ----------
+// ------------------ Previews ------------------
+function previewImage(input, previewId) {
+  const preview = document.getElementById(previewId);
+  if (!preview) return;
+  preview.innerHTML = '';
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.createElement('img'); img.src = e.target.result; img.style.borderRadius = '8px';
+      preview.appendChild(img); uploadedImages = [file];
+    };
+    reader.readAsDataURL(file);
+  }
+}
+function previewMultipleImages(input, previewId) {
+  const preview = document.getElementById(previewId);
+  if (!preview) return;
+  preview.innerHTML = ''; uploadedImages = [];
+  if (!input.files) return;
+  const files = Array.from(input.files).slice(0, 8);
+  if (input.files.length > 8) showError('يمكن تحميل حتى 8 صور كحد أقصى. سيتم أخذ أول 8 صور.');
+  files.forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const div = document.createElement('div'); div.className = 'preview-image';
+      const img = document.createElement('img'); img.src = e.target.result;
+      const removeBtn = document.createElement('button'); removeBtn.className = 'remove-image'; removeBtn.innerHTML = '×';
+      removeBtn.onclick = () => { div.remove(); uploadedImages = uploadedImages.filter((f, i) => i !== index); };
+      div.appendChild(img); div.appendChild(removeBtn); preview.appendChild(div);
+      uploadedImages.push(file);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function previewVideo(input, previewId) {
+  const preview = document.getElementById(previewId);
+  if (!preview) return;
+  preview.innerHTML = ''; uploadedVideos = [];
+  if (input.files && input.files[0]) {
+    const file = input.files[0]; const reader = new FileReader();
+    reader.onload = e => { const video = document.createElement('video'); video.src = e.target.result; video.controls = true; video.style.width = '100%'; preview.appendChild(video); uploadedVideos = [file]; };
+    reader.readAsDataURL(file);
+  }
+}
+
+// ------------------ Places select for ads ------------------
+async function loadPlacesForAds() {
+  const placeSelects = document.querySelectorAll('select[name="placeId"]');
+  placeSelects.forEach(ps => { ps.innerHTML = '<option value="">اختر المكان</option>'; });
+  const resp = await apiFetch(`${API_URL}?action=places`);
+  if (!resp.ok) { updateAdsTabVisibility(); return; }
+  const data = resp.data && resp.data.places ? resp.data.places : resp.data;
+  const places = data || [];
+  places.forEach(p => {
+    placeSelects.forEach(ps => {
+      const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; ps.appendChild(opt);
+    });
+  });
+  const logged = getLoggedPlace();
+  if (logged && logged.id) {
+    placeSelects.forEach(ps => { ps.value = logged.id; ps.disabled = true; });
+    document.getElementById('tab-ads').style.display = 'block';
+    loadAdsForPlace(logged.id);
+  } else {
+    placeSelects.forEach(ps => { ps.disabled = false; });
+    document.getElementById('tab-ads').style.display = 'none';
+  }
+  updateAdsTabVisibility();
+}
+
+// ------------------ Place save ------------------
 async function handlePlaceSubmit(ev) {
   ev.preventDefault(); showLoading(true);
   try {
@@ -920,7 +1049,10 @@ async function handlePlaceSubmit(ev) {
     if (!validateFiles()) { showLoading(false); return; }
     const logged = getLoggedPlace();
     let imageUrl = '';
-    if (placeData.image) { const placeIdForUpload = (logged && logged.id) ? logged.id : null; imageUrl = await uploadToGoogleDrive(placeData.image, 'places', placeIdForUpload); }
+    if (placeData.image) {
+      const placeIdForUpload = (logged && logged.id) ? logged.id : null;
+      imageUrl = await uploadToGoogleDrive(placeData.image, 'places', placeIdForUpload);
+    }
     await savePlaceToSheet(placeData, imageUrl);
     showSuccess('تم حفظ المكان بنجاح!');
     const preview = document.getElementById('placeImagePreview'); if (preview) preview.innerHTML = '';
@@ -928,10 +1060,13 @@ async function handlePlaceSubmit(ev) {
     await loadLookupsAndPopulate();
     loadPlacesForAds();
     const newLogged = getLoggedPlace(); if (newLogged && newLogged.id) { checkAdQuotaAndToggle(newLogged.id); loadAdsForPlace(newLogged.id); }
-  } catch (err) { console.error('handlePlaceSubmit error', err); showError(err.message || 'حدث خطأ أثناء حفظ المكان'); } finally { showLoading(false); }
+  } catch (err) {
+    console.error('handlePlaceSubmit error', err);
+    showError(err.message || 'حدث خطأ أثناء حفظ المكان');
+  } finally { showLoading(false); }
 }
 
-// ---------- Ad submit (new or update) ----------
+// ------------------ Ad submit (new/update) ------------------
 async function handleAdSubmit(ev) {
   ev.preventDefault(); showLoading(true);
   try {
@@ -978,9 +1113,11 @@ async function handleAdSubmit(ev) {
         adActiveStatus: adData.adActiveStatus || '',
         adStatus: adData.adStatus || ''
       };
-      const res = await fetch(API_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      const text = await res.text(); const resp = (()=>{try{return JSON.parse(text)}catch(e){return null}})();
-      if (!resp || !resp.success) throw new Error((resp && (resp.error || resp.message)) || 'فشل تحديث الإعلان');
+      const resp = await apiPost(payload);
+      if (!resp.ok || !(resp.data && resp.data.success === true || resp.data && resp.data.ad)) {
+        const errMsg = resp.data && resp.data.error ? resp.data.error : JSON.stringify(resp.data);
+        throw new Error('فشل تحديث الإعلان: ' + errMsg);
+      }
       showSuccess('تم تحديث الإعلان');
       editingAdId = null;
       const submitBtn = document.querySelector('#adForm button[type="submit"]'); if (submitBtn) submitBtn.textContent = 'حفظ الإعلان';
@@ -1001,23 +1138,25 @@ async function handleAdSubmit(ev) {
         adStatus: adData.adStatus || '',
         adActiveStatus: adData.adActiveStatus || ''
       };
-      const res = await fetch(API_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      const text = await res.text(); const resp = (()=>{try{return JSON.parse(text)}catch(e){return null}})();
-      if (!resp || !resp.success) throw new Error((resp && (resp.error || resp.message)) || 'فشل حفظ الإعلان');
+      const resp = await apiPost(payload);
+      if (!resp.ok || !(resp.data && (resp.data.message || resp.data.id))) {
+        const errMsg = resp.data && resp.data.error ? resp.data.error : JSON.stringify(resp.data);
+        throw new Error('فشل حفظ الإعلان: ' + errMsg);
+      }
       showSuccess('تم حفظ الإعلان');
     }
     ev.target.reset();
     const ip = document.getElementById('adImagesPreview'); if (ip) ip.innerHTML = '';
     const vp = document.getElementById('adVideoPreview'); if (vp) vp.innerHTML = '';
     uploadedImages = []; uploadedVideos = [];
-    if (placeIdToSend) {
-      await checkAdQuotaAndToggle(placeIdToSend);
-      await loadAdsForPlace(placeIdToSend);
-    }
-  } catch (err) { console.error('handleAdSubmit error', err); showError(err.message || 'حدث خطأ أثناء حفظ الإعلان'); } finally { showLoading(false); }
+    if (placeIdToSend) { await checkAdQuotaAndToggle(placeIdToSend); await loadAdsForPlace(placeIdToSend); }
+  } catch (err) {
+    console.error('handleAdSubmit error', err);
+    showError(err.message || 'حدث خطأ أثناء حفظ الإعلان');
+  } finally { showLoading(false); }
 }
 
-// ---------- Upload helper ----------
+// ------------------ Upload helper ------------------
 async function uploadToGoogleDrive(file, folder, placeId = null) {
   if (!API_URL || !API_URL.startsWith('http')) return `https://drive.google.com/file/d/${Math.random().toString(36).substr(2, 9)}/view`;
   const base64 = await readFileAsBase64(file);
@@ -1028,33 +1167,35 @@ async function uploadToGoogleDrive(file, folder, placeId = null) {
   form.append('mimeType', file.type || 'application/octet-stream');
   form.append('fileData', base64);
   if (placeId) form.append('placeId', placeId);
-  const res = await fetch(API_URL, { method: 'POST', body: form });
-  const data = await res.json().catch(() => null);
-  if (!data || !data.success) throw new Error((data && (data.error || data.message)) || 'فشل رفع الملف');
-  const fileUrl = data.fileUrl || (data.data && (data.data.fileUrl || data.data.url)) || (data.data && data.data);
+  // use asForm = true because server expects form-data for large binary-ish fields
+  const resp = await apiPost(form, true);
+  if (!resp.ok) throw new Error('فشل رفع الملف');
+  const data = resp.data;
+  const fileUrl = (data && data.fileUrl) || (data && data.data && (data.data.fileUrl || data.data.url)) || data;
   if (!fileUrl) throw new Error('تعذر استخراج رابط الملف من استجابة الخادم');
   return fileUrl;
 }
 
-// ---------- Ads list, render, edit/delete ----------
+// ------------------ Ads list, render, edit/delete ------------------
 async function loadAdsForPlace(placeId) {
   try {
-    const res = await fetch(`${API_URL}?action=ads&placeId=${encodeURIComponent(placeId)}`);
-    const json = await res.json().catch(()=>null);
-    const ads = (json && json.success && json.data && json.data.ads) ? json.data.ads : (json && json.success && json.ads) ? json.ads : (json && json.ads) ? json.ads : [];
-    renderAdsList(ads);
-  } catch (err) { console.error('loadAdsForPlace failed', err); }
+    const resp = await apiFetch(`${API_URL}?action=ads&placeId=${encodeURIComponent(placeId)}`);
+    if (!resp.ok) { console.warn('loadAdsForPlace failed', resp); return; }
+    const json = resp.data;
+    const ads = (json && json.success && json.data && json.data.ads) ? json.data.ads : (json && json.data && json.ads) ? json.ads : (json && json.ads) ? json.ads : [];
+    renderAdsList(ads || []);
+  } catch (err) { console.error('loadAdsForPlace error', err); }
 }
 
 function renderAdsList(ads) {
-  const container = document.getElementById('adsListContainer');
-  if (!container) {
+  let c = document.getElementById('adsListContainer');
+  if (!c) {
     const adsTab = document.getElementById('ads-tab');
     if (!adsTab) return;
     const div = document.createElement('div'); div.id = 'adsListContainer'; div.style.marginTop = '12px';
     adsTab.insertBefore(div, adsTab.firstChild);
   }
-  const c = document.getElementById('adsListContainer');
+  c = document.getElementById('adsListContainer');
   c.innerHTML = '';
   if (!ads || ads.length === 0) { c.innerHTML = '<p>لا توجد إعلانات حالياً لهذا المحل.</p>'; return; }
   ads.forEach(ad => {
@@ -1066,17 +1207,12 @@ function renderAdsList(ads) {
     card.appendChild(h); card.appendChild(meta); card.appendChild(p);
     if (ad.images && ad.images.length > 0) {
       const imgs = document.createElement('div'); imgs.style.display = 'flex'; imgs.style.gap = '6px'; imgs.style.marginTop = '8px';
-      ad.images.forEach(im => {
-        if (im && im.url) {
-          const img = document.createElement('img'); img.src = im.url; img.style.width = '80px'; img.style.height = '60px'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px';
-          imgs.appendChild(img);
-        }
-      });
+      ad.images.forEach(im => { if (im && im.url) { const img = document.createElement('img'); img.src = im.url; img.style.width = '80px'; img.style.height = '60px'; img.style.objectFit = 'cover'; img.style.borderRadius = '6px'; imgs.appendChild(img); } });
       card.appendChild(imgs);
     }
     const actions = document.createElement('div'); actions.style.display = 'flex'; actions.style.gap = '8px'; actions.style.marginTop = '10px';
-    const editBtn = document.createElement('button'); editBtn.className = 'btn btn-secondary'; editBtn.textContent = 'تعديل'; editBtn.onclick = () => { startEditAd(ad); };
-    const delBtn = document.createElement('button'); delBtn.className = 'btn btn-secondary'; delBtn.style.background = '#dc3545'; delBtn.style.color = '#fff'; delBtn.textContent = 'حذف'; delBtn.onclick = () => { deleteAdConfirm(ad.id); };
+    const editBtn = document.createElement('button'); editBtn.className = 'btn btn-secondary'; editBtn.textContent = 'تعديل'; editBtn.onclick = () => startEditAd(ad);
+    const delBtn = document.createElement('button'); delBtn.className = 'btn btn-secondary'; delBtn.style.background = '#dc3545'; delBtn.style.color = '#fff'; delBtn.textContent = 'حذف'; delBtn.onclick = () => deleteAdConfirm(ad.id);
     actions.appendChild(editBtn); actions.appendChild(delBtn);
     card.appendChild(actions);
     c.appendChild(card);
@@ -1108,36 +1244,36 @@ async function deleteAdConfirm(adId) {
   if (!confirm('هل أنت متأكد من حذف هذا الإعلان؟ لا يمكن التراجع.')) return;
   try {
     const payload = { action: 'deleteAd', adId: adId };
-    const res = await fetch(API_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    const text = await res.text(); const resp = (()=>{try{return JSON.parse(text)}catch(e){return null}})();
-    if (!resp || !resp.success) throw new Error((resp && (resp.error || resp.message)) || 'فشل حذف الإعلان');
+    const resp = await apiPost(payload);
+    if (!resp.ok || (resp.data && resp.data.success === false)) {
+      throw new Error((resp.data && resp.data.error) || JSON.stringify(resp.data));
+    }
     showSuccess('تم حذف الإعلان');
     const logged = getLoggedPlace();
     if (logged && logged.id) { checkAdQuotaAndToggle(logged.id); loadAdsForPlace(logged.id); }
   } catch (err) { console.error('deleteAd error', err); showError(err.message || 'خطأ أثناء حذف الإعلان'); }
 }
 
-// ---------- Quota & UI toggles ----------
+// ------------------ Quota & UI ------------------
 async function checkAdQuotaAndToggle(placeId) {
   try {
     if (!placeId) { document.getElementById('tab-ads').style.display = 'none'; return; }
-    const res = await fetch(`${API_URL}?action=remainingAds&placeId=${encodeURIComponent(placeId)}`);
-    const text = await res.text();
-    const json = (()=>{try{return JSON.parse(text)}catch(e){return null}})();
-    if (!json || !json.success) { document.getElementById('tab-ads').style.display = 'block'; toggleAdFormAllowed(false, 'تعذر التحقق من الباقة'); showAdQuotaMessage('فشل في جلب معلومات الباقة'); return; }
-    const info = json.data || {};
-    const remaining = Number(info.remaining || 0);
-    const allowed = Number(info.allowed || 0);
-    const used = Number(info.used || 0);
-    document.getElementById('tab-ads').style.display = 'block';
+    const resp = await apiFetch(`${API_URL}?action=remainingAds&placeId=${encodeURIComponent(placeId)}`);
+    if (!resp.ok) { toggleAdFormAllowed(false, 'تعذر التحقق من الباقة'); return; }
+    const data = resp.data && resp.data.data ? resp.data.data : resp.data;
+    const remaining = Number(data.remaining || 0);
+    const allowed = Number(data.allowed || 0);
+    const used = Number(data.used || 0);
     showAdQuotaMessage(`الإعلانات: الكل ${allowed} · المستخدمة ${used} · المتبقي ${remaining}`);
     toggleAdFormAllowed(remaining > 0, remaining > 0 ? '' : 'استنفدت حصة الإعلانات');
-  } catch (err) { console.error('checkAdQuotaAndToggle failed', err); toggleAdFormAllowed(false, 'خطأ أثناء التحقق من الباقة'); }
+  } catch (err) { console.error('checkAdQuotaAndToggle', err); toggleAdFormAllowed(false, 'خطأ أثناء التحقق'); }
 }
 
 function toggleAdFormAllowed(allowed, message) {
-  const adForm = document.getElementById('adForm'); if (!adForm) return;
-  const submitBtn = adForm.querySelector('button[type="submit"]'); if (submitBtn) { submitBtn.disabled = !allowed; submitBtn.style.opacity = allowed ? '1' : '0.6'; submitBtn.title = allowed ? '' : (message || 'غير مسموح'); }
+  const adForm = document.getElementById('adForm');
+  if (!adForm) return;
+  const submitBtn = adForm.querySelector('button[type="submit"]');
+  if (submitBtn) { submitBtn.disabled = !allowed; submitBtn.style.opacity = allowed ? '1' : '0.6'; submitBtn.title = allowed ? '' : (message || 'غير مسموح'); }
   let adNotice = document.getElementById('adQuotaNotice');
   if (!adNotice) {
     const container = document.getElementById('ads-tab');
@@ -1145,39 +1281,9 @@ function toggleAdFormAllowed(allowed, message) {
   }
   if (adNotice) { adNotice.textContent = message || ''; adNotice.style.display = message ? 'block' : 'none'; }
 }
+function showAdQuotaMessage(text) { let el = document.getElementById('adQuotaSummary'); if (!el) { const container = document.getElementById('ads-tab'); if (!container) return; el = document.createElement('p'); el.id = 'adQuotaSummary'; el.style.marginTop = '8px'; el.style.color = '#333'; container.insertBefore(el, container.firstChild.nextSibling); } el.textContent = text || ''; }
 
-function showAdQuotaMessage(text) {
-  let el = document.getElementById('adQuotaSummary');
-  if (!el) { const container = document.getElementById('ads-tab'); if (!container) return; el = document.createElement('p'); el.id = 'adQuotaSummary'; el.style.marginTop = '8px'; el.style.color = '#333'; container.insertBefore(el, container.firstChild.nextSibling); }
-  el.textContent = text || '';
-}
-
-// ---------- Ads tab visibility ----------
-function updateAdsTabVisibility() {
-  const adsTab = document.getElementById('tab-ads');
-  const logged = getLoggedPlace();
-  if (!adsTab) return;
-  if (logged && logged.id) {
-    adsTab.style.display = 'block';
-  } else {
-    adsTab.style.display = 'none';
-    const activeTab = document.querySelector('.tab.active');
-    if (!activeTab || activeTab.id === 'tab-ads') { const placesTabEl = document.getElementById('tab-places'); if (placesTabEl) { placesTabEl.classList.add('active'); showTab('places'); } }
-  }
-}
-
-// ---------- fetch place full object ----------
-async function fetchPlace(placeId) {
-  if (!API_URL || !API_URL.startsWith('http')) return null;
-  const payload = { action: 'getDashboard', placeId: placeId };
-  const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  const text = await res.text();
-  const data = (() => { try { return JSON.parse(text); } catch(e){ return null; } })();
-  if (!data || !data.success) return null;
-  return (data.data && data.data.place) ? data.data.place : null;
-}
-
-// ---------- Auth & session ----------
+// ------------------ Auth & session ------------------
 function setupAuthUI() {
   const loginBtn = document.getElementById('loginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
@@ -1199,8 +1305,12 @@ function setLoggedPlace(obj) { try { localStorage.setItem('khedmatak_place', JSO
 function clearLoggedPlace() { localStorage.removeItem('khedmatak_place'); }
 
 async function setLoggedInUI(place) {
-  const loginBtn = document.getElementById('loginBtn'); const logoutBtn = document.getElementById('logoutBtn'); const loggedInUser = document.getElementById('loggedInUser');
-  if (loginBtn) loginBtn.style.display = 'none'; if (logoutBtn) logoutBtn.style.display = 'inline-block'; if (loggedInUser) { loggedInUser.style.display = 'inline-block'; loggedInUser.textContent = (place && place.name) ? place.name : 'صاحب المحل'; }
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const loggedInUser = document.getElementById('loggedInUser');
+  if (loginBtn) loginBtn.style.display = 'none';
+  if (logoutBtn) logoutBtn.style.display = 'inline-block';
+  if (loggedInUser) { loggedInUser.style.display = 'inline-block'; loggedInUser.textContent = (place && place.name) ? place.name : 'صاحب المحل'; }
   const loginModal = document.getElementById('loginModal'); if (loginModal) loginModal.style.display = 'none';
   setLoggedPlace(place);
   await loadLookupsAndPopulate().catch(()=>{});
@@ -1212,8 +1322,12 @@ async function setLoggedInUI(place) {
 }
 
 function setLoggedOutUI() {
-  const loginBtn = document.getElementById('loginBtn'); const logoutBtn = document.getElementById('logoutBtn'); const loggedInUser = document.getElementById('loggedInUser');
-  if (loginBtn) loginBtn.style.display = 'inline-block'; if (logoutBtn) logoutBtn.style.display = 'none'; if (loggedInUser) { loggedInUser.style.display = 'none'; loggedInUser.textContent = ''; }
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const loggedInUser = document.getElementById('loggedInUser');
+  if (loginBtn) loginBtn.style.display = 'inline-block';
+  if (logoutBtn) logoutBtn.style.display = 'none';
+  if (loggedInUser) { loggedInUser.style.display = 'none'; loggedInUser.textContent = ''; }
   clearLoggedPlace();
   const tabAds = document.getElementById('tab-ads'); if (tabAds) tabAds.style.display = 'none';
   const placeSelects = document.querySelectorAll('select[name="placeId"]'); placeSelects.forEach(ps => { ps.disabled = false; });
@@ -1249,7 +1363,7 @@ async function tryPrefillPlaceForm(place) {
   } catch (e) { console.warn('tryPrefillPlaceForm failed', e); }
 }
 
-// ---------- Select helper ----------
+// select helpers
 function setSelectByValueOrText(selectEl, val) {
   if (!selectEl) return false;
   const str = (val === null || val === undefined) ? '' : String(val).trim();
@@ -1277,7 +1391,7 @@ function setSelectValueWhenReady(selector, val, retries = 12, interval = 200) {
   });
 }
 
-// ---------- Helpers ----------
+// ------------------ Simple helpers ------------------
 function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1313,15 +1427,39 @@ async function handleLoginSubmit(ev) {
     const phoneOrId = form.querySelector('input[name="phoneOrId"]').value.trim();
     const password = form.querySelector('input[name="password"]').value || '';
     if (!phoneOrId || !password) { showError('ادخل رقم/ID وكلمة المرور'); showLoading(false); return; }
-    const payload = { action: 'loginPlace', phoneOrId: phoneOrId, password: password };
-    const res = await fetch(API_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    const text = await res.text(); console.log('Login response raw:', res.status, text);
-    const data = (()=>{ try { return JSON.parse(text); } catch(e) { return null; } })();
-    if (!data) throw new Error('استجابة الخادم ليست JSON. راجع رابط API أو سجل الخادم.');
-    if (!data.success) throw new Error(data.error || 'خطأ في الخادم');
-    const payloadData = data.data || {};
-    if (payloadData.place) { await setLoggedInUI(payloadData.place); showSuccess('تم تسجيل الدخول'); return; }
+    const payload = { action: 'loginPlace', phoneOrId, password };
+    const resp = await apiPost(payload);
+    if (!resp.ok) { console.error('login failed raw', resp); throw new Error('خطأ في التواصل مع الخادم'); }
+    const data = resp.data;
+    if (!data || data.success === false) {
+      throw new Error((data && data.error) ? data.error : JSON.stringify(data));
+    }
+    if (data.data && data.data.place) { await setLoggedInUI(data.data.place); showSuccess('تم تسجيل الدخول'); return; }
     throw new Error('استجابة غير متوقعة من الخادم عند تسجيل الدخول');
-  } catch (err) { console.error('Login error detailed:', err); showError(err.message || 'خطأ أثناء الدخول'); } finally { showLoading(false); }
+  } catch (err) {
+    console.error('Login error detailed:', err);
+    showError(err.message || 'خطأ أثناء الدخول');
+  } finally { showLoading(false); }
 }
 function handleLogout() { setLoggedOutUI(); showSuccess('تم تسجيل الخروج'); }
+
+// ---------- choose package (send JSON) ----------
+async function choosePackageAPI(packageId) {
+  const logged = getLoggedPlace();
+  if (!logged || !logged.id) { showError('يجب تسجيل الدخول أولاً'); return; }
+  const payload = { action: 'choosePackage', placeId: logged.id, packageId: packageId };
+  const resp = await apiPost(payload);
+  if (!resp.ok) { showError('فشل تغيير الباقة'); return; }
+  const data = resp.data;
+  if (!data || data.success === false) { showError((data && data.error) || 'فشل تغيير الباقة'); return; }
+  showSuccess('تم تغيير الباقة');
+  if (data.data && data.data.start && data.data.end) {
+    const place = getLoggedPlace();
+    if (place && place.raw) {
+      place.raw['تاريخ بداية الاشتراك'] = data.data.start;
+      place.raw['تاريخ نهاية الاشتراك'] = data.data.end;
+      setLoggedPlace(place);
+    }
+    if (place && place.id) checkAdQuotaAndToggle(place.id);
+  }
+}
