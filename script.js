@@ -2,16 +2,17 @@
 // const API_URL = 'https://script.google.com/macros/s/AKfycbx-fMI2hsJ5LvKKh9fzd3Vidn2TeGtEbHV9Nyj2nZBy9xQk9Uy_uL-m3hrDqp1uUWAPwA/exec';
 
 // let currentTab = 'places';
-// let uploadedImages = [];
-// let uploadedVideos = [];
+// let uploadedImages = []; // array of File
+// let uploadedVideos = []; // array of File (single)
 
 // // init
 // document.addEventListener('DOMContentLoaded', () => {
 //   initializeApp();
 //   setupEventListeners();
+//   loadLookupsAndPopulate();
 //   loadPlacesForAds();
-//   setupCityAreaMapping();
 //   setupAuthUI();
+//   updateAdsTabVisibility();
 // });
 
 // // initialization
@@ -33,22 +34,105 @@
 //   if (citySelect) citySelect.addEventListener('change', updateAreas);
 // }
 
-// // city/area mapping
-// function setupCityAreaMapping() {
-//   const cityAreaMap = {
-//     '1': [{ id: '1', name: 'مدينة نصر' }, { id: '2', name: 'المعادي' }],
-//     '2': [{ id: '3', name: 'الهرم' }, { id: '4', name: 'الدقي' }],
-//   };
-//   window.cityAreaMap = cityAreaMap;
+// // show/hide ads tab based on login
+// function updateAdsTabVisibility() {
+//   const adsTab = document.getElementById('tab-ads');
+//   const logged = getLoggedPlace();
+//   if (!adsTab) return;
+//   if (logged && logged.id) {
+//     adsTab.style.display = 'block';
+//   } else {
+//     adsTab.style.display = 'none';
+//     const activeTab = document.querySelector('.tab.active');
+//     if (!activeTab || activeTab.id === 'tab-ads') {
+//       const placesTabEl = document.getElementById('tab-places');
+//       if (placesTabEl) {
+//         placesTabEl.classList.add('active');
+//         showTab('places');
+//       }
+//     }
+//   }
 // }
 
+// // populate lookups: activities, cities, areas, sites, packages, payment methods
+// async function loadLookupsAndPopulate() {
+//   try {
+//     const res = await fetch(`${API_URL}?action=getLookups`);
+//     const json = await res.json().catch(()=>null);
+//     const data = (json && json.success && json.data) ? json.data : null;
+//     if (!data) return;
+//     // activities
+//     const actSelect = document.querySelector('select[name="activityType"]');
+//     if (actSelect) {
+//       actSelect.innerHTML = '<option value="">اختر نوع النشاط</option>';
+//       (data.activities || []).forEach(a => {
+//         const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.name; actSelect.appendChild(opt);
+//       });
+//     }
+//     // cities & areas
+//     const citySelect = document.querySelector('select[name="city"]');
+//     if (citySelect) {
+//       citySelect.innerHTML = '<option value="">اختر المدينة</option>';
+//       (data.cities || []).forEach(c => {
+//         const opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.name; citySelect.appendChild(opt);
+//       });
+//     }
+//     // build cityAreaMap from areas raw (areas sheet should contain ID المدينة)
+//     const cityAreaMap = {};
+//     (data.areas || []).forEach(a => {
+//       const cid = a.raw['ID المدينة'] ? String(a.raw['ID المدينة']) : '';
+//       if (!cityAreaMap[cid]) cityAreaMap[cid] = [];
+//       cityAreaMap[cid].push({ id: a.id, name: a.name });
+//     });
+//     window.cityAreaMap = cityAreaMap;
+//     // sites
+//     const siteSelects = document.querySelectorAll('select[name="location"]');
+//     siteSelects.forEach(s => {
+//       s.innerHTML = '<option value="">اختر الموقع</option>';
+//       (data.sites || []).forEach(site => {
+//         const opt = document.createElement('option'); opt.value = site.id; opt.textContent = site.name; s.appendChild(opt);
+//       });
+//     });
+//     // packages select
+//     const pkgSelect = document.querySelector('select[name="package"]');
+//     if (pkgSelect) {
+//       pkgSelect.innerHTML = '<option value="">اختر الباقة</option>';
+//       (data.packages || []).forEach(p => {
+//         const opt = document.createElement('option'); opt.value = p.id; opt.textContent = `${p.name} (${p.duration} يوم)`; pkgSelect.appendChild(opt);
+//       });
+//     }
+//     // packages grid (dynamic)
+//     const pkgGrid = document.getElementById('packagesGrid');
+//     if (pkgGrid) {
+//       pkgGrid.innerHTML = '';
+//       (data.packages || []).forEach(p => {
+//         const div = document.createElement('div'); div.style.background = '#fff'; div.style.padding = '12px'; div.style.borderRadius = '8px';
+//         const h = document.createElement('h3'); h.textContent = p.name;
+//         const d = document.createElement('p'); d.textContent = `المدة: ${p.duration} يوم`;
+//         const desc = document.createElement('p'); desc.textContent = p.raw && p.raw['وصف الباقة'] ? p.raw['وصف الباقة'] : '';
+//         const btn = document.createElement('button'); btn.className = 'btn btn-primary'; btn.textContent = 'اختر الباقة';
+//         btn.onclick = () => choosePackageAPI(p.id);
+//         div.appendChild(h); div.appendChild(d); if (desc.textContent) div.appendChild(desc); div.appendChild(btn);
+//         pkgGrid.appendChild(div);
+//       });
+//     }
+//     // payments
+//     window.availablePaymentMethods = (data.payments || []).map(pm => ({ id: pm.id || pm.raw['معرف الدفع'], name: pm.name || pm.raw['طرق الدفع'] || '' }));
+//     // update ads tab visibility (in case login status)
+//     updateAdsTabVisibility();
+//   } catch (err) {
+//     console.warn('Failed to load lookups', err);
+//   }
+// }
+
+// // city areas update
 // function updateAreas() {
 //   const citySelect = document.querySelector('select[name="city"]');
 //   const areaSelect = document.querySelector('select[name="area"]');
 //   if (!citySelect || !areaSelect) return;
 //   areaSelect.innerHTML = '<option value="">اختر المنطقة</option>';
 //   const selected = citySelect.value;
-//   if (selected && window.cityAreaMap[selected]) {
+//   if (selected && window.cityAreaMap && window.cityAreaMap[selected]) {
 //     window.cityAreaMap[selected].forEach(a => {
 //       const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.name; areaSelect.appendChild(opt);
 //     });
@@ -61,11 +145,12 @@
 //   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
 //   const target = document.getElementById(tabName + '-tab');
 //   if (target) target.style.display = 'block';
-//   if (typeof event !== 'undefined' && event && event.target) event.target.classList.add('active');
+//   const tabEl = document.getElementById('tab-' + tabName);
+//   if (tabEl) tabEl.classList.add('active');
 //   currentTab = tabName;
 // }
 
-// // previews
+// // previews (max 8)
 // function previewImage(input, previewId) {
 //   const preview = document.getElementById(previewId);
 //   if (!preview) return;
@@ -85,20 +170,21 @@
 //   const preview = document.getElementById(previewId);
 //   if (!preview) return;
 //   preview.innerHTML = ''; uploadedImages = [];
-//   if (input.files) {
-//     Array.from(input.files).forEach((file, idx) => {
-//       const reader = new FileReader();
-//       reader.onload = e => {
-//         const div = document.createElement('div'); div.className = 'preview-image';
-//         const img = document.createElement('img'); img.src = e.target.result;
-//         const removeBtn = document.createElement('button'); removeBtn.className = 'remove-image'; removeBtn.innerHTML = '×';
-//         removeBtn.onclick = () => { div.remove(); uploadedImages = uploadedImages.filter((f, i) => i !== idx); };
-//         div.appendChild(img); div.appendChild(removeBtn); preview.appendChild(div);
-//         uploadedImages.push(file);
-//       };
-//       reader.readAsDataURL(file);
-//     });
-//   }
+//   if (!input.files) return;
+//   const files = Array.from(input.files).slice(0, 8); // limit to 8
+//   if (input.files.length > 8) showError('يمكن تحميل حتى 8 صور كحد أقصى. سيتم أخذ أول 8 صور.');
+//   files.forEach((file, index) => {
+//     const reader = new FileReader();
+//     reader.onload = e => {
+//       const div = document.createElement('div'); div.className = 'preview-image';
+//       const img = document.createElement('img'); img.src = e.target.result;
+//       const removeBtn = document.createElement('button'); removeBtn.className = 'remove-image'; removeBtn.innerHTML = '×';
+//       removeBtn.onclick = () => { div.remove(); uploadedImages = uploadedImages.filter((f, i) => i !== index); };
+//       div.appendChild(img); div.appendChild(removeBtn); preview.appendChild(div);
+//       uploadedImages.push(file);
+//     };
+//     reader.readAsDataURL(file);
+//   });
 // }
 
 // function previewVideo(input, previewId) {
@@ -114,19 +200,32 @@
 
 // // load places for ad select (GET ?action=places)
 // function loadPlacesForAds() {
-//   const placeSelect = document.querySelector('select[name="placeId"]');
-//   if (!placeSelect) return;
-//   placeSelect.innerHTML = '<option value="">اختر المكان</option>';
+//   const placeSelects = document.querySelectorAll('select[name="placeId"]');
+//   placeSelects.forEach(ps => { ps.innerHTML = '<option value="">اختر المكان</option>'; });
 //   if (API_URL && API_URL.startsWith('http')) {
 //     fetch(`${API_URL}?action=places`)
 //       .then(r => r.json())
 //       .then(data => {
 //         const places = data.places || (data.data && data.data.places) || [];
-//         if (data && data.success && Array.isArray(places)) {
-//           places.forEach(p => { const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; placeSelect.appendChild(opt); });
+//         places.forEach(p => {
+//           placeSelects.forEach(ps => {
+//             const opt = document.createElement('option'); opt.value = p.id; opt.textContent = p.name; ps.appendChild(opt);
+//           });
+//         });
+//         // if logged in, set ad place to logged place and disable select
+//         const logged = getLoggedPlace();
+//         if (logged && logged.id) {
+//           placeSelects.forEach(ps => { ps.value = logged.id; ps.disabled = true; });
+//           document.getElementById('tab-ads').style.display = 'block';
+//         } else {
+//           placeSelects.forEach(ps => { ps.disabled = false; });
+//           document.getElementById('tab-ads').style.display = 'none';
 //         }
+//         updateAdsTabVisibility();
 //       })
-//       .catch(() => { /* fallback omitted */ });
+//       .catch(() => { updateAdsTabVisibility(); });
+//   } else {
+//     updateAdsTabVisibility();
 //   }
 // }
 
@@ -163,7 +262,8 @@
 //     ev.target.reset();
 //     const preview = document.getElementById('placeImagePreview'); if (preview) preview.innerHTML = '';
 //     uploadedImages = [];
-//     // reload places select to reflect any new/updated place
+//     // refresh lookups & place selects
+//     await loadLookupsAndPopulate();
 //     loadPlacesForAds();
 //   } catch (err) {
 //     console.error(err); showError(err.message || 'حدث خطأ أثناء حفظ المكان');
@@ -189,8 +289,12 @@
 //       video: uploadedVideos[0] || null
 //     };
 //     if (!validateFiles()) { showLoading(false); return; }
+//     // upload images up to 8
 //     const imageUrls = [];
-//     for (let image of adData.images) imageUrls.push(await uploadToGoogleDrive(image, 'ads'));
+//     for (let i = 0; i < Math.min(adData.images.length, 8); i++) {
+//       const url = await uploadToGoogleDrive(adData.images[i], 'ads');
+//       imageUrls.push({ name: adData.images[i].name, url });
+//     }
 //     let videoUrl = '';
 //     if (adData.video) videoUrl = await uploadToGoogleDrive(adData.video, 'ads');
 //     // ensure placeId: if not provided use logged place
@@ -269,7 +373,7 @@
 //   }
 // }
 
-// // save ad
+// // save ad (send imageUrls as JSON array of {name,url})
 // async function saveAdToSheet(adData, imageUrls, videoUrl) {
 //   if (!API_URL || !API_URL.startsWith('http')) return;
 //   const form = new FormData();
@@ -281,7 +385,9 @@
 //   form.append('startDate', adData.startDate || '');
 //   form.append('endDate', adData.endDate || '');
 //   form.append('coupon', adData.coupon || '');
-//   form.append('imageUrls', JSON.stringify(imageUrls || []));
+//   form.append('imageFiles', JSON.stringify((imageUrls || []).map(i=>i.name || '')));
+//   form.append('imageUrls', JSON.stringify((imageUrls || []).map(i=>i.url || '')));
+//   form.append('videoFile', adData.video ? (adData.video.name || '') : '');
 //   form.append('videoUrl', videoUrl || '');
 //   form.append('adStatus', adData.adStatus || '');
 //   form.append('adActiveStatus', adData.adActiveStatus || '');
@@ -301,7 +407,7 @@
 // }
 
 // function showSuccess(message) { const el = document.getElementById('successAlert'); if (!el) return; el.textContent = message; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 5000); }
-// function showError(message) { const el = document.getElementById('errorAlert'); if (!el) return; el.textContent = message; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 5000); }
+// function showError(message) { const el = document.getElementById('errorAlert'); if (!el) return; el.textContent = message; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 6000); }
 // function showLoading(show) { const el = document.getElementById('loading'); if (!el) return; el.style.display = show ? 'block' : 'none'; }
 
 // function validateFiles() {
@@ -335,6 +441,7 @@
 
 //   const stored = getLoggedPlace();
 //   if (stored) setLoggedInUI(stored);
+//   updateAdsTabVisibility();
 // }
 
 // function getLoggedPlace() {
@@ -353,6 +460,12 @@
 //   const loginModal = document.getElementById('loginModal'); if (loginModal) loginModal.style.display = 'none';
 //   setLoggedPlace(place);
 //   tryPrefillPlaceForm(place);
+//   // show ads tab now that user logged in
+//   document.getElementById('tab-ads').style.display = 'block';
+//   // set ad place selects and disable them
+//   const placeSelects = document.querySelectorAll('select[name="placeId"]');
+//   placeSelects.forEach(ps => { ps.value = place.id; ps.disabled = true; });
+//   updateAdsTabVisibility();
 // }
 
 // function setLoggedOutUI() {
@@ -363,6 +476,12 @@
 //   if (logoutBtn) logoutBtn.style.display = 'none';
 //   if (loggedInUser) { loggedInUser.style.display = 'none'; loggedInUser.textContent = ''; }
 //   clearLoggedPlace();
+//   // hide ads tab
+//   document.getElementById('tab-ads').style.display = 'none';
+//   // enable place selects
+//   const placeSelects = document.querySelectorAll('select[name="placeId"]');
+//   placeSelects.forEach(ps => { ps.disabled = false; });
+//   updateAdsTabVisibility();
 // }
 
 // function tryPrefillPlaceForm(place) {
@@ -375,6 +494,8 @@
 //     if (raw['رقم التواصل']) document.querySelector('input[name="phone"]').value = raw['رقم التواصل'];
 //     if (raw['البريد الإلكتروني']) document.querySelector('input[name="email"]').value = raw['البريد الإلكتروني'];
 //     if (raw['وصف مختصر ']) document.querySelector('textarea[name="description"]').value = raw['وصف مختصر '];
+//     if (raw['الباقة']) document.querySelector('select[name="package"]').value = raw['الباقة'];
+//     if (raw['حالة التسجيل']) document.querySelector('select[name="status"]').value = raw['حالة التسجيل'];
 //   } catch (e) { console.warn('prefill failed', e); }
 // }
 
@@ -419,8 +540,6 @@
 //     }
 //   }
 // }
-
-
 // رابط الـ Web App (ضع رابطك هنا بعد نشر الـ Apps Script)
 const API_URL = 'https://script.google.com/macros/s/AKfycbx-fMI2hsJ5LvKKh9fzd3Vidn2TeGtEbHV9Nyj2nZBy9xQk9Uy_uL-m3hrDqp1uUWAPwA/exec';
 
@@ -476,6 +595,60 @@ function updateAdsTabVisibility() {
     }
   }
 }
+
+// ----------------------- helpers to set select values reliably -----------------------
+function setSelectByValueOrText(selectEl, val) {
+  if (!selectEl) return false;
+  const str = (val === null || val === undefined) ? '' : String(val).trim();
+  if (str === '') return false;
+  // try by value
+  for (let i = 0; i < selectEl.options.length; i++) {
+    const opt = selectEl.options[i];
+    if (String(opt.value) === str) {
+      selectEl.value = opt.value;
+      return true;
+    }
+  }
+  // try by exact text
+  for (let i = 0; i < selectEl.options.length; i++) {
+    const opt = selectEl.options[i];
+    if (String(opt.text).trim() === str) {
+      selectEl.value = opt.value;
+      return true;
+    }
+  }
+  // try case-insensitive text contains
+  for (let i = 0; i < selectEl.options.length; i++) {
+    const opt = selectEl.options[i];
+    if (String(opt.text).toLowerCase().indexOf(str.toLowerCase()) !== -1) {
+      selectEl.value = opt.value;
+      return true;
+    }
+  }
+  return false;
+}
+
+function setSelectValueWhenReady(selector, val, retries = 10, interval = 250) {
+  return new Promise(resolve => {
+    if (!selector || val === null || val === undefined || String(val).trim() === '') {
+      resolve(false);
+      return;
+    }
+    let attempts = 0;
+    const trySet = () => {
+      attempts++;
+      const sel = (typeof selector === 'string') ? document.querySelector(selector) : selector;
+      if (sel) {
+        const ok = setSelectByValueOrText(sel, val);
+        if (ok) { resolve(true); return; }
+      }
+      if (attempts >= retries) { resolve(false); return; }
+      setTimeout(trySet, interval);
+    };
+    trySet();
+  });
+}
+// -------------------------------------------------------------------------------------
 
 // populate lookups: activities, cities, areas, sites, packages, payment methods
 async function loadLookupsAndPopulate() {
@@ -792,7 +965,8 @@ async function savePlaceToSheet(placeData, imageUrl) {
   // Update local session if updatePlace returned place
   if (isUpdate && data.data && data.data.place) {
     setLoggedPlace(data.data.place);
-    setLoggedInUI(data.data.place);
+    // update UI and prefill with latest data
+    await setLoggedInUI(data.data.place);
   }
 }
 
@@ -873,7 +1047,8 @@ function getLoggedPlace() {
 function setLoggedPlace(obj) { try { localStorage.setItem('khedmatak_place', JSON.stringify(obj)); } catch (e) { /* ignore */ } }
 function clearLoggedPlace() { localStorage.removeItem('khedmatak_place'); }
 
-function setLoggedInUI(place) {
+// make setLoggedInUI async so we can ensure lookups loaded before prefill
+async function setLoggedInUI(place) {
   const loginBtn = document.getElementById('loginBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   const loggedInUser = document.getElementById('loggedInUser');
@@ -882,9 +1057,15 @@ function setLoggedInUI(place) {
   if (loggedInUser) { loggedInUser.style.display = 'inline-block'; loggedInUser.textContent = (place && place.name) ? place.name : 'صاحب المحل'; }
   const loginModal = document.getElementById('loginModal'); if (loginModal) loginModal.style.display = 'none';
   setLoggedPlace(place);
-  tryPrefillPlaceForm(place);
+
+  // ensure lookups loaded before prefill (try to load if not already)
+  await loadLookupsAndPopulate().catch(()=>{ /* ignore errors */ });
+  // now attempt to prefill fields, waiting for selects/options to be present
+  await tryPrefillPlaceForm(place);
+
   // show ads tab now that user logged in
-  document.getElementById('tab-ads').style.display = 'block';
+  const tabAds = document.getElementById('tab-ads');
+  if (tabAds) tabAds.style.display = 'block';
   // set ad place selects and disable them
   const placeSelects = document.querySelectorAll('select[name="placeId"]');
   placeSelects.forEach(ps => { ps.value = place.id; ps.disabled = true; });
@@ -900,26 +1081,74 @@ function setLoggedOutUI() {
   if (loggedInUser) { loggedInUser.style.display = 'none'; loggedInUser.textContent = ''; }
   clearLoggedPlace();
   // hide ads tab
-  document.getElementById('tab-ads').style.display = 'none';
+  const tabAds = document.getElementById('tab-ads');
+  if (tabAds) tabAds.style.display = 'none';
   // enable place selects
   const placeSelects = document.querySelectorAll('select[name="placeId"]');
   placeSelects.forEach(ps => { ps.disabled = false; });
   updateAdsTabVisibility();
 }
 
-function tryPrefillPlaceForm(place) {
+async function tryPrefillPlaceForm(place) {
   if (!place || !place.raw) return;
   try {
     const raw = place.raw;
-    if (raw['اسم المكان']) document.querySelector('input[name="placeName"]').value = raw['اسم المكان'];
-    if (raw['العنوان التفصيلي']) document.querySelector('input[name="detailedAddress"]').value = raw['العنوان التفصيلي'];
-    if (raw['رابط الموقع على الخريطة']) document.querySelector('input[name="mapLink"]').value = raw['رابط الموقع على الخريطة'];
-    if (raw['رقم التواصل']) document.querySelector('input[name="phone"]').value = raw['رقم التواصل'];
-    if (raw['البريد الإلكتروني']) document.querySelector('input[name="email"]').value = raw['البريد الإلكتروني'];
-    if (raw['وصف مختصر ']) document.querySelector('textarea[name="description"]').value = raw['وصف مختصر '];
-    if (raw['الباقة']) document.querySelector('select[name="package"]').value = raw['الباقة'];
-    if (raw['حالة التسجيل']) document.querySelector('select[name="status"]').value = raw['حالة التسجيل'];
-  } catch (e) { console.warn('prefill failed', e); }
+
+    // Basic inputs
+    const setInput = (selector, value) => {
+      const el = document.querySelector(selector);
+      if (el && (value !== undefined && value !== null)) el.value = value;
+    };
+    setInput('input[name="placeName"]', raw['اسم المكان'] || raw['اسم المكان '] || '');
+    setInput('input[name="detailedAddress"]', raw['العنوان التفصيلي'] || raw['العنوان'] || '');
+    setInput('input[name="mapLink"]', raw['رابط الموقع على الخريطة'] || raw['رابط الخريطة'] || '');
+    setInput('input[name="phone"]', raw['رقم التواصل'] || raw['الهاتف'] || '');
+    setInput('input[name="whatsappLink"]', raw['رابط واتساب'] || raw['واتساب'] || '');
+    setInput('input[name="email"]', raw['البريد الإلكتروني'] || raw['الايميل'] || '');
+    setInput('input[name="website"]', raw['الموقع الالكتروني'] || raw['الموقع'] || '');
+    setInput('input[name="workingHours"]', raw['ساعات العمل'] || raw['مواعيد العمل'] || '');
+    setInput('textarea[name="description"]', raw['وصف مختصر '] || raw['وصف'] || '');
+    // password: prefill (if exists) - caution security
+    setInput('input[name="password"]', raw['كلمة المرور'] || '');
+
+    // Selects: activity, city, package, location, status, area
+    // Attempt to set them by value or by text. Use setSelectValueWhenReady to wait for options to be available.
+    const activityVal = raw['نوع النشاط / الفئة'] || raw['activity'] || raw['نوع النشاط'] || '';
+    await setSelectValueWhenReady('select[name="activityType"]', activityVal, 12, 200);
+
+    const cityVal = raw['المدينة'] || raw['ID المدينة'] || raw['city'] || '';
+    await setSelectValueWhenReady('select[name="city"]', cityVal, 12, 200);
+    // once city set, update areas then set area
+    if (cityVal) updateAreas();
+    const areaVal = raw['المنطقة'] || raw['ID المنطقة'] || raw['area'] || '';
+    await setSelectValueWhenReady('select[name="area"]', areaVal, 12, 200);
+
+    const locationVal = raw['الموقع او المول'] || raw['ID الموقع او المول'] || raw['location'] || '';
+    await setSelectValueWhenReady('select[name="location"]', locationVal, 12, 200);
+
+    const packageVal = raw['الباقة'] || raw['package'] || '';
+    await setSelectValueWhenReady('select[name="package"]', packageVal, 12, 200);
+
+    // Status: might be in column "حالة التسجيل" or "حالة المكان"
+    const statusVal = raw['حالة التسجيل'] || raw['حالة المكان'] || raw['status'] || '';
+    if (statusVal) {
+      await setSelectValueWhenReady('select[name="status"]', statusVal, 8, 200);
+    }
+
+    // If there's logo url in sheet, show preview
+    const logoUrl = raw['رابط صورة شعار المكان'] || raw['رابط صورةشعار المكان'] || raw['logoUrl'] || raw['رابط صورة شعار'] || '';
+    if (logoUrl) {
+      const preview = document.getElementById('placeImagePreview');
+      if (preview) {
+        preview.innerHTML = '';
+        const img = document.createElement('img'); img.src = logoUrl;
+        img.style.width = '100%'; img.style.height = '120px'; img.style.objectFit = 'cover'; img.style.borderRadius = '8px';
+        preview.appendChild(img);
+      }
+    }
+  } catch (e) {
+    console.warn('prefillPlace failed', e);
+  }
 }
 
 async function handleLoginSubmit(ev) {
@@ -931,7 +1160,7 @@ async function handleLoginSubmit(ev) {
     if (!data) throw new Error('تعذر قراءة استجابة الخادم');
     if (!data.success) throw new Error(data.error || 'خطأ في الخادم');
     const payload = data.data || {};
-    if (payload.place) { setLoggedInUI(payload.place); showSuccess('تم تسجيل الدخول'); return; }
+    if (payload.place) { await setLoggedInUI(payload.place); showSuccess('تم تسجيل الدخول'); return; }
     if (payload.success === false) throw new Error(payload.error || 'فشل الدخول');
     if (payload.error) throw new Error(payload.error);
     throw new Error('استجابة غير متوقعة');
