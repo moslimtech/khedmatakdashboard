@@ -793,4 +793,5 @@ function clearAdForm() {
   const ip = document.getElementById('adImagesPreview'); if (ip) ip.innerHTML = '';
   const vp = document.getElementById('adVideoPreview'); if (vp) vp.innerHTML = '';
   editingAdId = null;
+
 }
