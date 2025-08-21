@@ -301,6 +301,18 @@
     </div>
   </div>
 
+    <!-- Payment Modal -->
+  <div id="paymentModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:18px;margin:auto;direction:rtl">
+      <h3 style="margin-bottom:10px">إتمام الدفع</h3>
+      <div id="paymentContent"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+        <button onclick="confirmPayment()" class="btn btn-primary">تم الدفع</button>
+        <button onclick="closePaymentModal()" class="btn btn-secondary">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
