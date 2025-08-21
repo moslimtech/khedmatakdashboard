@@ -54,6 +54,60 @@
 //   }
 // }
 
+// // ----------------------- helpers to set select values reliably -----------------------
+// function setSelectByValueOrText(selectEl, val) {
+//   if (!selectEl) return false;
+//   const str = (val === null || val === undefined) ? '' : String(val).trim();
+//   if (str === '') return false;
+//   // try by value
+//   for (let i = 0; i < selectEl.options.length; i++) {
+//     const opt = selectEl.options[i];
+//     if (String(opt.value) === str) {
+//       selectEl.value = opt.value;
+//       return true;
+//     }
+//   }
+//   // try by exact text
+//   for (let i = 0; i < selectEl.options.length; i++) {
+//     const opt = selectEl.options[i];
+//     if (String(opt.text).trim() === str) {
+//       selectEl.value = opt.value;
+//       return true;
+//     }
+//   }
+//   // try case-insensitive text contains
+//   for (let i = 0; i < selectEl.options.length; i++) {
+//     const opt = selectEl.options[i];
+//     if (String(opt.text).toLowerCase().indexOf(str.toLowerCase()) !== -1) {
+//       selectEl.value = opt.value;
+//       return true;
+//     }
+//   }
+//   return false;
+// }
+
+// function setSelectValueWhenReady(selector, val, retries = 10, interval = 250) {
+//   return new Promise(resolve => {
+//     if (!selector || val === null || val === undefined || String(val).trim() === '') {
+//       resolve(false);
+//       return;
+//     }
+//     let attempts = 0;
+//     const trySet = () => {
+//       attempts++;
+//       const sel = (typeof selector === 'string') ? document.querySelector(selector) : selector;
+//       if (sel) {
+//         const ok = setSelectByValueOrText(sel, val);
+//         if (ok) { resolve(true); return; }
+//       }
+//       if (attempts >= retries) { resolve(false); return; }
+//       setTimeout(trySet, interval);
+//     };
+//     trySet();
+//   });
+// }
+// // -------------------------------------------------------------------------------------
+
 // // populate lookups: activities, cities, areas, sites, packages, payment methods
 // async function loadLookupsAndPopulate() {
 //   try {
@@ -369,7 +423,8 @@
 //   // Update local session if updatePlace returned place
 //   if (isUpdate && data.data && data.data.place) {
 //     setLoggedPlace(data.data.place);
-//     setLoggedInUI(data.data.place);
+//     // update UI and prefill with latest data
+//     await setLoggedInUI(data.data.place);
 //   }
 // }
 
@@ -450,7 +505,8 @@
 // function setLoggedPlace(obj) { try { localStorage.setItem('khedmatak_place', JSON.stringify(obj)); } catch (e) { /* ignore */ } }
 // function clearLoggedPlace() { localStorage.removeItem('khedmatak_place'); }
 
-// function setLoggedInUI(place) {
+// // make setLoggedInUI async so we can ensure lookups loaded before prefill
+// async function setLoggedInUI(place) {
 //   const loginBtn = document.getElementById('loginBtn');
 //   const logoutBtn = document.getElementById('logoutBtn');
 //   const loggedInUser = document.getElementById('loggedInUser');
@@ -459,9 +515,15 @@
 //   if (loggedInUser) { loggedInUser.style.display = 'inline-block'; loggedInUser.textContent = (place && place.name) ? place.name : 'صاحب المحل'; }
 //   const loginModal = document.getElementById('loginModal'); if (loginModal) loginModal.style.display = 'none';
 //   setLoggedPlace(place);
-//   tryPrefillPlaceForm(place);
+
+//   // ensure lookups loaded before prefill (try to load if not already)
+//   await loadLookupsAndPopulate().catch(()=>{ /* ignore errors */ });
+//   // now attempt to prefill fields, waiting for selects/options to be present
+//   await tryPrefillPlaceForm(place);
+
 //   // show ads tab now that user logged in
-//   document.getElementById('tab-ads').style.display = 'block';
+//   const tabAds = document.getElementById('tab-ads');
+//   if (tabAds) tabAds.style.display = 'block';
 //   // set ad place selects and disable them
 //   const placeSelects = document.querySelectorAll('select[name="placeId"]');
 //   placeSelects.forEach(ps => { ps.value = place.id; ps.disabled = true; });
@@ -477,26 +539,74 @@
 //   if (loggedInUser) { loggedInUser.style.display = 'none'; loggedInUser.textContent = ''; }
 //   clearLoggedPlace();
 //   // hide ads tab
-//   document.getElementById('tab-ads').style.display = 'none';
+//   const tabAds = document.getElementById('tab-ads');
+//   if (tabAds) tabAds.style.display = 'none';
 //   // enable place selects
 //   const placeSelects = document.querySelectorAll('select[name="placeId"]');
 //   placeSelects.forEach(ps => { ps.disabled = false; });
 //   updateAdsTabVisibility();
 // }
 
-// function tryPrefillPlaceForm(place) {
+// async function tryPrefillPlaceForm(place) {
 //   if (!place || !place.raw) return;
 //   try {
 //     const raw = place.raw;
-//     if (raw['اسم المكان']) document.querySelector('input[name="placeName"]').value = raw['اسم المكان'];
-//     if (raw['العنوان التفصيلي']) document.querySelector('input[name="detailedAddress"]').value = raw['العنوان التفصيلي'];
-//     if (raw['رابط الموقع على الخريطة']) document.querySelector('input[name="mapLink"]').value = raw['رابط الموقع على الخريطة'];
-//     if (raw['رقم التواصل']) document.querySelector('input[name="phone"]').value = raw['رقم التواصل'];
-//     if (raw['البريد الإلكتروني']) document.querySelector('input[name="email"]').value = raw['البريد الإلكتروني'];
-//     if (raw['وصف مختصر ']) document.querySelector('textarea[name="description"]').value = raw['وصف مختصر '];
-//     if (raw['الباقة']) document.querySelector('select[name="package"]').value = raw['الباقة'];
-//     if (raw['حالة التسجيل']) document.querySelector('select[name="status"]').value = raw['حالة التسجيل'];
-//   } catch (e) { console.warn('prefill failed', e); }
+
+//     // Basic inputs
+//     const setInput = (selector, value) => {
+//       const el = document.querySelector(selector);
+//       if (el && (value !== undefined && value !== null)) el.value = value;
+//     };
+//     setInput('input[name="placeName"]', raw['اسم المكان'] || raw['اسم المكان '] || '');
+//     setInput('input[name="detailedAddress"]', raw['العنوان التفصيلي'] || raw['العنوان'] || '');
+//     setInput('input[name="mapLink"]', raw['رابط الموقع على الخريطة'] || raw['رابط الخريطة'] || '');
+//     setInput('input[name="phone"]', raw['رقم التواصل'] || raw['الهاتف'] || '');
+//     setInput('input[name="whatsappLink"]', raw['رابط واتساب'] || raw['واتساب'] || '');
+//     setInput('input[name="email"]', raw['البريد الإلكتروني'] || raw['الايميل'] || '');
+//     setInput('input[name="website"]', raw['الموقع الالكتروني'] || raw['الموقع'] || '');
+//     setInput('input[name="workingHours"]', raw['ساعات العمل'] || raw['مواعيد العمل'] || '');
+//     setInput('textarea[name="description"]', raw['وصف مختصر '] || raw['وصف'] || '');
+//     // password: prefill (if exists) - caution security
+//     setInput('input[name="password"]', raw['كلمة المرور'] || '');
+
+//     // Selects: activity, city, package, location, status, area
+//     // Attempt to set them by value or by text. Use setSelectValueWhenReady to wait for options to be available.
+//     const activityVal = raw['نوع النشاط / الفئة'] || raw['activity'] || raw['نوع النشاط'] || '';
+//     await setSelectValueWhenReady('select[name="activityType"]', activityVal, 12, 200);
+
+//     const cityVal = raw['المدينة'] || raw['ID المدينة'] || raw['city'] || '';
+//     await setSelectValueWhenReady('select[name="city"]', cityVal, 12, 200);
+//     // once city set, update areas then set area
+//     if (cityVal) updateAreas();
+//     const areaVal = raw['المنطقة'] || raw['ID المنطقة'] || raw['area'] || '';
+//     await setSelectValueWhenReady('select[name="area"]', areaVal, 12, 200);
+
+//     const locationVal = raw['الموقع او المول'] || raw['ID الموقع او المول'] || raw['location'] || '';
+//     await setSelectValueWhenReady('select[name="location"]', locationVal, 12, 200);
+
+//     const packageVal = raw['الباقة'] || raw['package'] || '';
+//     await setSelectValueWhenReady('select[name="package"]', packageVal, 12, 200);
+
+//     // Status: might be in column "حالة التسجيل" or "حالة المكان"
+//     const statusVal = raw['حالة التسجيل'] || raw['حالة المكان'] || raw['status'] || '';
+//     if (statusVal) {
+//       await setSelectValueWhenReady('select[name="status"]', statusVal, 8, 200);
+//     }
+
+//     // If there's logo url in sheet, show preview
+//     const logoUrl = raw['رابط صورة شعار المكان'] || raw['رابط صورةشعار المكان'] || raw['logoUrl'] || raw['رابط صورة شعار'] || '';
+//     if (logoUrl) {
+//       const preview = document.getElementById('placeImagePreview');
+//       if (preview) {
+//         preview.innerHTML = '';
+//         const img = document.createElement('img'); img.src = logoUrl;
+//         img.style.width = '100%'; img.style.height = '120px'; img.style.objectFit = 'cover'; img.style.borderRadius = '8px';
+//         preview.appendChild(img);
+//       }
+//     }
+//   } catch (e) {
+//     console.warn('prefillPlace failed', e);
+//   }
 // }
 
 // async function handleLoginSubmit(ev) {
@@ -508,7 +618,7 @@
 //     if (!data) throw new Error('تعذر قراءة استجابة الخادم');
 //     if (!data.success) throw new Error(data.error || 'خطأ في الخادم');
 //     const payload = data.data || {};
-//     if (payload.place) { setLoggedInUI(payload.place); showSuccess('تم تسجيل الدخول'); return; }
+//     if (payload.place) { await setLoggedInUI(payload.place); showSuccess('تم تسجيل الدخول'); return; }
 //     if (payload.success === false) throw new Error(payload.error || 'فشل الدخول');
 //     if (payload.error) throw new Error(payload.error);
 //     throw new Error('استجابة غير متوقعة');
@@ -825,9 +935,11 @@ function loadPlacesForAds() {
   }
 }
 
+// -------------------- CORE: handle place submit + ensure prefill after save --------------------
 // handle place submit (register or update)
 async function handlePlaceSubmit(ev) {
-  ev.preventDefault(); showLoading(true);
+  ev.preventDefault();
+  showLoading(true);
   try {
     const formData = new FormData(ev.target);
     const placeData = {
@@ -850,14 +962,27 @@ async function handlePlaceSubmit(ev) {
       status: formData.get('status'),
       image: uploadedImages[0] || null
     };
+
     if (!validateFiles()) { showLoading(false); return; }
+
+    // If there's an image and user is logged in, pass placeId to upload so server will write the link to sheet.
+    const logged = getLoggedPlace();
     let imageUrl = '';
-    if (placeData.image) imageUrl = await uploadToGoogleDrive(placeData.image, 'places');
+    if (placeData.image) {
+      const placeIdForUpload = (logged && logged.id) ? logged.id : null;
+      imageUrl = await uploadToGoogleDrive(placeData.image, 'places', placeIdForUpload);
+    }
+
+    // Save place (register or update). savePlaceToSheet will fetch the updated place and set session/UI.
     await savePlaceToSheet(placeData, imageUrl);
+
     showSuccess('تم حفظ المكان بنجاح!');
-    ev.target.reset();
+
+    // do NOT blindly reset the form here — we want to keep the form filled with latest data from server.
+    // However clear the client-side image buffer/preview (we will show logo preview from server data).
     const preview = document.getElementById('placeImagePreview'); if (preview) preview.innerHTML = '';
     uploadedImages = [];
+
     // refresh lookups & place selects
     await loadLookupsAndPopulate();
     loadPlacesForAds();
@@ -865,6 +990,9 @@ async function handlePlaceSubmit(ev) {
     console.error(err); showError(err.message || 'حدث خطأ أثناء حفظ المكان');
   } finally { showLoading(false); }
 }
+
+// -------------------- END CORE --------------------
+
 
 // handle ad submit
 async function handleAdSubmit(ev) {
@@ -908,7 +1036,8 @@ async function handleAdSubmit(ev) {
 }
 
 // upload to Drive via Apps Script (send base64 in fileData)
-async function uploadToGoogleDrive(file, folder) {
+// now accepts optional placeId so server can write link to place row immediately
+async function uploadToGoogleDrive(file, folder, placeId = null) {
   if (!API_URL || !API_URL.startsWith('http')) return `https://drive.google.com/file/d/${Math.random().toString(36).substr(2, 9)}/view`;
   const base64 = await readFileAsBase64(file);
   const form = new FormData();
@@ -917,6 +1046,7 @@ async function uploadToGoogleDrive(file, folder) {
   form.append('fileName', file.name);
   form.append('mimeType', file.type || 'application/octet-stream');
   form.append('fileData', base64);
+  if (placeId) form.append('placeId', placeId);
   const res = await fetch(API_URL, { method: 'POST', body: form });
   const data = await res.json().catch(() => null);
   if (!data || !data.success) throw new Error((data && (data.error || data.message)) || 'فشل رفع الملف');
@@ -926,6 +1056,7 @@ async function uploadToGoogleDrive(file, folder) {
 }
 
 // save place: create or update depending on logged session
+// After saving we fetch the full place (getDashboard) and call setLoggedInUI to prefill fields.
 async function savePlaceToSheet(placeData, imageUrl) {
   if (!API_URL || !API_URL.startsWith('http')) return;
   const logged = getLoggedPlace();
@@ -962,12 +1093,37 @@ async function savePlaceToSheet(placeData, imageUrl) {
   const data = await res.json().catch(() => null);
   if (!data || !data.success) throw new Error((data && (data.error || data.message)) || 'فشل حفظ المكان');
 
-  // Update local session if updatePlace returned place
+  // If server returned full place in response (updatePlace), use it
   if (isUpdate && data.data && data.data.place) {
-    setLoggedPlace(data.data.place);
-    // update UI and prefill with latest data
     await setLoggedInUI(data.data.place);
+    return;
   }
+
+  // If server returned new id (registerPlace), fetch the full place via getDashboard
+  const newId = (data.data && data.data.id) ? data.data.id : null;
+  const placeIdToFetch = isUpdate ? (logged && logged.id) : newId;
+  if (placeIdToFetch) {
+    // fetch full place
+    try {
+      const fetched = await fetchPlace(placeIdToFetch);
+      if (fetched) await setLoggedInUI(fetched);
+    } catch (e) {
+      console.warn('Failed to fetch place after save', e);
+    }
+  }
+}
+
+// fetch place full object using getDashboard action
+async function fetchPlace(placeId) {
+  if (!API_URL || !API_URL.startsWith('http')) return null;
+  const form = new FormData();
+  form.append('action', 'getDashboard');
+  form.append('placeId', placeId);
+  const res = await fetch(API_URL, { method: 'POST', body: form });
+  const data = await res.json().catch(() => null);
+  if (!data || !data.success) return null;
+  if (data.data && data.data.place) return data.data.place;
+  return null;
 }
 
 // save ad (send imageUrls as JSON array of {name,url})
@@ -1112,7 +1268,6 @@ async function tryPrefillPlaceForm(place) {
     setInput('input[name="password"]', raw['كلمة المرور'] || '');
 
     // Selects: activity, city, package, location, status, area
-    // Attempt to set them by value or by text. Use setSelectValueWhenReady to wait for options to be available.
     const activityVal = raw['نوع النشاط / الفئة'] || raw['activity'] || raw['نوع النشاط'] || '';
     await setSelectValueWhenReady('select[name="activityType"]', activityVal, 12, 200);
 
@@ -1170,25 +1325,3 @@ async function handleLoginSubmit(ev) {
 }
 
 function handleLogout() { setLoggedOutUI(); showSuccess('تم تسجيل الخروج'); }
-
-// choose package API
-async function choosePackageAPI(packageId) {
-  const logged = getLoggedPlace();
-  if (!logged || !logged.id) { showError('يجب تسجيل الدخول أولاً'); return; }
-  const form = new FormData();
-  form.append('action', 'choosePackage');
-  form.append('placeId', logged.id);
-  form.append('packageId', packageId);
-  const res = await fetch(API_URL, { method: 'POST', body: form });
-  const data = await res.json().catch(() => null);
-  if (!data || !data.success) { showError((data && (data.error || data.message)) || 'فشل تغيير الباقة'); return; }
-  showSuccess('تم تغيير الباقة');
-  if (data.data && data.data.start && data.data.end) {
-    const place = getLoggedPlace();
-    if (place && place.raw) {
-      place.raw['تاريخ بداية الاشتراك'] = data.data.start;
-      place.raw['تاريخ نهاية الاشتراك'] = data.data.end;
-      setLoggedPlace(place);
-    }
-  }
-}
