@@ -849,4 +849,5 @@ async function confirmPayment() {
     closePaymentModal();
   }
 }
+if (placeData.package) showPaymentModal(placeData.package);
 
